@@ -2,12 +2,21 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Final
 
 import bcrypt
+from fastapi.security import OAuth2PasswordBearer
 import jwt
+
+from api.models.Scopes import scopes
 
 # region variables
 SECRET_KEY: Final[str] = "50a2ebe353eebd0eada632ded3770850a00e8d968f2f455adaf5569780f1b51e"
 ALGORITHM: Final[str] = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES: Final[int] = 30
+
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/users/token",
+    # TODO: Determine if omitting the scopes parameter is a good idea.
+    scopes=scopes,  # type: ignore
+)
 # endregion
 
 

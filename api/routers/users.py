@@ -1,10 +1,11 @@
 import re
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from api.db.setup import session_dependency
+from api.models.Scopes import Scopes
 from api.models.Tags import Tags
 from api.models.Token import Token
 from api.models.User import (User, UserCreate, UserPublic, authenticate_user,
@@ -49,20 +50,26 @@ async def login_for_access_token(
         HTTPException: If the username or password is incorrect, an HTTP 401
             Unauthorized error is raised.
     """
-    user = authenticate_user(
-        email=form_data.username,
-        password=form_data.password
-    )
-    if not user:
+    if not (
+        user := authenticate_user(
+            email=form_data.username,
+            password=form_data.password
+        )
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token(
-        data={"sub": user.email}
+
+    access_token: str = create_access_token(
+        data={
+            "sub": user.email,
+            "scopes": [user.role]
+        }
     )
-    return Token(access_token=access_token, token_type="bearer")
+
+    return Token(access_token=access_token)
 
 
 @router.get(
@@ -73,8 +80,14 @@ async def login_for_access_token(
     response_description="Successful Response with the current user",
 )
 async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
+    current_user: Annotated[
+        User,
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ASSISTANT, Scopes.ADMIN]
+        )
+    ],
+) -> User:
     """
     Retrieve the current authenticated user.
 
@@ -108,7 +121,7 @@ async def sign_up(
         )
     ],
     session: session_dependency
-):
+) -> User:
     if not re.match(
         "^(?=(.*[a-z]){3,})(?=(.*[A-Z]){2,})(?=(.*[0-9]){2,})(?=(.*[!@#$%^&*()\\-__+.]){2,}).{9,}$",
         user.password
@@ -118,9 +131,9 @@ async def sign_up(
             detail="Password must contain at least 3 lowercase, 2 uppercase, 2 digits, 2 special character and be at least 8 characters long.",
         )
 
-    hashed_password = get_password_hash(user.password)
-    extra_data = {"hashed_password": hashed_password}
-    db_user = User.model_validate(user, update=extra_data)
+    hashed_password: bytes = get_password_hash(user.password)
+    extra_data: dict[str, bytes] = {"hashed_password": hashed_password}
+    db_user: User = User.model_validate(user, update=extra_data)
     session.add(db_user)
     session.commit()
     session.refresh(db_user)

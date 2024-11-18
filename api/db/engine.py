@@ -1,7 +1,7 @@
 from sqlmodel import create_engine
 
 # region connection string
-sqlite_file_name = "database.db"
+sqlite_file_name = "data/database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 # endregion
 

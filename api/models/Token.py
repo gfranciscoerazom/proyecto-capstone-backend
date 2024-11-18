@@ -13,6 +13,8 @@ class Token(BaseModel):
         description="The access token to be used for authentication.",
     )
     token_type: str = Field(
+        default="bearer",
+
         title="Token Type",
         description="The type of token. This should always be 'bearer'.",
     )
@@ -29,5 +31,11 @@ class TokenData(BaseModel):
 
         title="Username",
         description="The username of the user.",
+    )
+    scopes: list[str] = Field(
+        default=[],
+
+        title="List of Scopes (Roles)",
+        description="The list of scopes (roles) assigned to the user.",
     )
 # endregion

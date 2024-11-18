@@ -1,23 +1,20 @@
 from typing import Annotated, Any
 
+from fastapi.security import SecurityScopes
 import jwt
 from faker import Faker
 from fastapi import Depends, HTTPException, status
 from fastapi.openapi.models import Example
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import EmailStr
+from pydantic import EmailStr, ValidationError
 from sqlmodel import Field, Session, SQLModel, select  # type: ignore
 
 from api.db.engine import engine
+from api.models.Scopes import Scopes
 from api.models.Token import TokenData
-from api.security.security import ALGORITHM, SECRET_KEY, verify_password
+from api.security.security import ALGORITHM, SECRET_KEY, verify_password, oauth2_scheme
 
 # region vars
 f = Faker()
-
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/users/token"
-)
 # endregion
 
 
@@ -60,6 +57,12 @@ class User(UserBase, table=True):
         title="User status",
         description="The status of the user. If True, the user is disabled."
     )
+    role: str = Field(
+        default=Scopes.ASSISTANT,
+
+        title="User role",
+        description="The role of the user. Used for authorization.",
+    )
 
 
 class UserPublic(UserBase):
@@ -75,6 +78,10 @@ class UserPublic(UserBase):
     disabled: bool = Field(
         title="User status",
         description="The status of the user. If True, the user is disabled."
+    )
+    role: str = Field(
+        title="User role",
+        description="The role of the user. Used for authorization.",
     )
 
 
@@ -113,6 +120,12 @@ class UserUpdate(SQLModel):
 
         title="User status",
         description="The status of the user. If True, the user is disabled."
+    )
+    role: str | None = Field(
+        default=None,
+
+        title="User role",
+        description="The role of the user. Used for authorization.",
     )
 # endregion
 
@@ -162,7 +175,7 @@ openapi_examples_UserCreate: dict[str, Example] = {
 }
 # endregion
 
-# region helpers
+# region functions
 
 
 def get_user(
@@ -202,7 +215,10 @@ def authenticate_user(email: EmailStr, password: str):
     return user if verify_password(password, user.hashed_password) else False
 
 
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+def get_current_user(
+    security_scopes: SecurityScopes,
+    token: Annotated[str, Depends(oauth2_scheme)]
+) -> User:
     """
     Retrieve the current user from the database using the token.
 
@@ -215,10 +231,12 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     Raises:
         credentials_exception (HTTPException): An exception raised if the credentials are invalid.
     """
+    authenticate_value: str = f'Bearer scope="{security_scopes.scope_str}"' if security_scopes.scopes else "Bearer"
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
+        headers={"WWW-Authenticate": authenticate_value},
     )
 
     try:
@@ -231,19 +249,27 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         if not (username := payload.get("sub")):
             raise credentials_exception
 
-        token_data = TokenData(username=username)
-    except jwt.InvalidTokenError:
+        token_scopes: list[str] = payload.get("scopes", [])
+        token_data = TokenData(username=username, scopes=token_scopes)
+    except (jwt.InvalidTokenError, ValidationError):
         raise credentials_exception
 
     if not (user := get_user(email=token_data.username)):
         raise credentials_exception
+
+    if not any(scope in token_data.scopes for scope in security_scopes.scopes):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not enough permissions",
+            headers={"WWW-Authenticate": authenticate_value},
+        )
 
     return user
 
 
 def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)],
-):
+) -> User:
     """
     Retrieve the current active user from the database.
 

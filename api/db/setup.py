@@ -15,9 +15,6 @@ def create_db_and_tables():
     This function initializes the database by creating all the tables
     that are defined in the SQLModel metadata. It uses the `create_all`
     method of the SQLAlchemy engine to perform the creation.
-
-    Returns:
-        None
     """
     SQLModel.metadata.create_all(engine)
 
