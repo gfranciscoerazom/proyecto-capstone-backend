@@ -34,8 +34,8 @@ async def lifespan(app: FastAPI):
     # Code to run after the server stops
 
 app = FastAPI(
-    title="Proyecto Integrador",
-    summary="TODO",
+    title="Proyecto CAPSTONE - Backend",
+    summary="This is the backend for the Proyecto CAPSTONE project. It provides the API for the project's frontend.",
     description="TODO",
     version="0.0.1",
     contact={

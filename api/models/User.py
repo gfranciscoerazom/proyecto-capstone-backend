@@ -1,17 +1,18 @@
 from typing import Annotated, Any
 
-from fastapi.security import SecurityScopes
 import jwt
 from faker import Faker
 from fastapi import Depends, HTTPException, status
 from fastapi.openapi.models import Example
+from fastapi.security import SecurityScopes
 from pydantic import EmailStr, ValidationError
 from sqlmodel import Field, Session, SQLModel, select  # type: ignore
 
 from api.db.engine import engine
 from api.models.Scopes import Scopes
 from api.models.Token import TokenData
-from api.security.security import ALGORITHM, SECRET_KEY, verify_password, oauth2_scheme
+from api.security.security import (ALGORITHM, SECRET_KEY, oauth2_scheme,
+                                   verify_password)
 
 # region vars
 f = Faker()

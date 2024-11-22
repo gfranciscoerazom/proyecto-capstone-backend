@@ -2,8 +2,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Final
 
 import bcrypt
-from fastapi.security import OAuth2PasswordBearer
 import jwt
+from fastapi.security import OAuth2PasswordBearer
 
 from api.models.Scopes import scopes
 
