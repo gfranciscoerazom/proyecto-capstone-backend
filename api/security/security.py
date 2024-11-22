@@ -1,17 +1,14 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Final
+from typing import Any
 
 import bcrypt
 import jwt
 from fastapi.security import OAuth2PasswordBearer
 
 from api.models.Scopes import scopes
+from api.settings.config import settings
 
 # region variables
-SECRET_KEY: Final[str] = "50a2ebe353eebd0eada632ded3770850a00e8d968f2f455adaf5569780f1b51e"
-ALGORITHM: Final[str] = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES: Final[int] = 30
-
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/users/token",
     # TODO: Determine if omitting the scopes parameter is a good idea.
@@ -55,9 +52,9 @@ def get_password_hash(password: str):
 def create_access_token(
         data: dict[str, Any],
         expires_delta: timedelta = timedelta(
-            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-):
+) -> str:
     """
     Create a JSON Web Token (JWT) for the given data with an expiration time.
 
@@ -69,12 +66,12 @@ def create_access_token(
         str: The encoded JWT as a string.
     """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + expires_delta
+    expire: datetime = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(  # type: ignore
+    encoded_jwt: str = jwt.encode(  # type: ignore
         to_encode,
-        SECRET_KEY,
-        algorithm=ALGORITHM
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM
     )
     return encoded_jwt
 # endregion

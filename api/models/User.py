@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import jwt
 from faker import Faker
@@ -11,8 +11,8 @@ from sqlmodel import Field, Session, SQLModel, select  # type: ignore
 from api.db.engine import engine
 from api.models.Scopes import Scopes
 from api.models.Token import TokenData
-from api.security.security import (ALGORITHM, SECRET_KEY, oauth2_scheme,
-                                   verify_password)
+from api.security.security import oauth2_scheme, verify_password
+from api.settings.config import settings
 
 # region vars
 f = Faker()
@@ -182,7 +182,7 @@ openapi_examples_UserCreate: dict[str, Example] = {
 def get_user(
         email: EmailStr | None = None,
         user_id: int | None = None
-):
+) -> None | User:
     """
     Retrieve a user from the database by email or user ID.
     Args:
@@ -201,7 +201,7 @@ def get_user(
             return session.get(User, user_id)
 
 
-def authenticate_user(email: EmailStr, password: str):
+def authenticate_user(email: EmailStr, password: str) -> User | Literal[False]:
     """
     Authenticate a user by email and password.
     Args:
@@ -243,8 +243,8 @@ def get_current_user(
     try:
         payload: dict[str, Any] = jwt.decode(  # type: ignore
             token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM]
         )
 
         if not (username := payload.get("sub")):

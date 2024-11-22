@@ -22,7 +22,6 @@ router = APIRouter(
 # region Endpoints
 @router.post(
     "/token",
-    include_in_schema=False,
 
     summary="Get an access token",
     response_description="Successful Response with the access token",
