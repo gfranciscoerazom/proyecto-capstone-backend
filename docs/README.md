@@ -52,3 +52,7 @@ This project is a FastAPI-based application that provides user authentication an
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](../LICENSE) file for details.
+
+## Documentation
+
+The project documentation is available in the [wiki](https://github.com/gfranciscoerazom/proyecto-capstone-backend/wiki) tab of the repository.

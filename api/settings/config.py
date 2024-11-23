@@ -1,3 +1,4 @@
+# %%
 from functools import lru_cache
 from typing import Annotated, Final
 
@@ -35,6 +36,14 @@ class Settings(BaseSettings):
 
         ge=1,
     )
+    DATABASE_URL: Final[str] = Field(
+        title="Database URL",
+        description="URL for the database",
+        examples=[
+            "sqlite:///this/is/an/example.db",
+            "postgresql://user:password@localhost/db",
+        ],
+    )
 
     model_config = SettingsConfigDict(env_file="./../../.env")
 # endregion
@@ -58,3 +67,5 @@ settings: Settings = get_settings()
 
 settings_dependency = Annotated[Settings, Depends(get_settings)]
 # endregion
+
+# %%
