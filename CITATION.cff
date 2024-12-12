@@ -1,0 +1,44 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Proyecto CAPSTONE
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Gabriel Francisco
+    family-names: Erazo Merino
+    email: gabriel.erazo.merino@udla.edu.ec
+    affiliation: Universidad de las Américas (UDLA)
+    orcid: 'https://orcid.org/0000-0002-7271-4526'
+  - given-names: Edwin Leonardo
+    family-names: García Aucatoma
+    email: edwin.garcia.aucatoma@udla.edu.ec
+    affiliation: Universidad de las Américas (UDLA)
+  - name: Universidad de las Américas
+    address: >-
+      Redondel del Ciclista, Antigua Vía a Nayón, Quito EC
+      170124
+    city: Quito
+    country: EC
+    post-code: '170503'
+    alias: UDLA
+    email: admision@udla.edu.ec
+    tel: +593 2 3981000
+    website: 'https://www.udla.edu.ec'
+repository-code: >-
+  https://github.com/gfranciscoerazom/proyecto-capstone-backend
+abstract: >-
+  This is the backend for the “Proyecto CAPSTONE” project.
+  It provides the API for the project's frontend.
+keywords:
+  - FastAPI
+  - Python
+  - SQLModel
+  - UDLA
+  - CAPSTONE
+  - deepface
+  - AI
+license: MIT

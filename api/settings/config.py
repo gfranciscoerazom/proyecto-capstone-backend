@@ -1,4 +1,3 @@
-# %%
 from functools import lru_cache
 from typing import Annotated, Final
 
@@ -67,5 +66,3 @@ settings: Settings = get_settings()
 
 settings_dependency = Annotated[Settings, Depends(get_settings)]
 # endregion
-
-# %%
