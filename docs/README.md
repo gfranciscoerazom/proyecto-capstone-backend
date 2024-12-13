@@ -30,6 +30,20 @@ This project is a FastAPI-based application that provides user authentication an
     pip install -r requirements.txt
     ```
 
+    or
+
+    ```sh
+    pip install "fastapi[all]"
+    pip install PyJWT
+    pip install bcrypt
+    pip install Faker
+    pip install sqlmodel
+    pip install deepface
+    pip install ipykernel
+    pip install pytest
+    pip install isort
+    ```
+
 ## Running the Application
 
 1. **Start the FastAPI server:**
