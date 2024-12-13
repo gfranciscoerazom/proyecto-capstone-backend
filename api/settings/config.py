@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Final
 
 from fastapi import Depends
@@ -44,7 +45,10 @@ class Settings(BaseSettings):
         ],
     )
 
-    model_config = SettingsConfigDict(env_file="./../../.env")
+    model_config = SettingsConfigDict(
+        env_file=Path.cwd() / ".env",
+        env_file_encoding='utf-8'
+    )
 # endregion
 
 
@@ -64,5 +68,5 @@ def get_settings() -> Settings:
 # region variables
 settings: Settings = get_settings()
 
-settings_dependency = Annotated[Settings, Depends(get_settings)]
+SettingsDependency = Annotated[Settings, Depends(get_settings)]
 # endregion
