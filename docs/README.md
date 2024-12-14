@@ -33,15 +33,7 @@ This project is a FastAPI-based application that provides user authentication an
     or
 
     ```sh
-    pip install "fastapi[all]"
-    pip install PyJWT
-    pip install bcrypt
-    pip install Faker
-    pip install sqlmodel
-    pip install deepface
-    pip install ipykernel
-    pip install pytest
-    pip install isort
+    pip install "fastapi[all]" PyJWT bcrypt Faker sqlmodel deepface ipykernel pytest isort
     ```
 
 ## Running the Application
