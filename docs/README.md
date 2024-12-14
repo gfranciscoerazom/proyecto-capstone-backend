@@ -27,7 +27,7 @@ This project is a FastAPI-based application that provides user authentication an
 3. **Install the dependencies:**
 
     ```sh
-    pip install -r requirements.txt
+    pip install -r requirements-[windows|linux].txt
     ```
 
     or
