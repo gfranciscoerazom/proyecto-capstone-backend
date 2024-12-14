@@ -1,3 +1,7 @@
+"""
+This module contains functions to setup the database.
+"""
+
 from typing import Annotated
 
 from fastapi import Depends
@@ -36,5 +40,5 @@ def get_session():
 
 
 # region dependencies
-session_dependency = Annotated[Session, Depends(get_session)]
+SessionDependency = Annotated[Session, Depends(get_session)]
 # endregion

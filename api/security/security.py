@@ -1,3 +1,7 @@
+"""
+This module provides security related functions, including password hashing,
+verification, and JWT token creation.
+"""
 from datetime import datetime, timedelta, timezone
 from typing import Any
 

@@ -1,3 +1,9 @@
+"""
+This module contains the main application logic, including routing, middleware,
+and the application's lifecycle management. It serves as the entrypoint for
+the API and orchestrates interactions with other modules.
+"""
+
 import time
 from typing import Any, Callable
 
@@ -35,7 +41,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Proyecto CAPSTONE - Backend",
-    summary="This is the backend for the Proyecto CAPSTONE project. It provides the API for the project's frontend.",
+    summary="This is the backend for the Proyecto CAPSTONE project. \
+    It provides the API for the project's frontend.",
     description="TODO",
     version="0.0.1",
     contact={
@@ -61,6 +68,14 @@ app.include_router(users.router)
 
 @app.get("/")
 async def read_main():
+    """
+    This function is the main entry point for the application. 
+    It handles GET requests to the root path ("/") and returns a JSON response 
+    with a message "Hello World".
+
+    Returns:
+        dict: A dictionary containing the message "Hello World".
+    """
     return {"msg": "Hello World"}
 
 # region Middleware
@@ -77,10 +92,12 @@ async def add_process_time_header(
 
     Args:
         request (Request): The incoming HTTP request.
-        call_next (Callable[[Request], Any]): A function that processes the request and returns a response.
+        call_next (Callable[[Request], Any]): A function that processes the request
+        and returns a response.
 
     Returns:
-        Response: The HTTP response with an added "X-Process-Time" header indicating the time taken to process the request.
+        Response: The HTTP response with an added "X-Process-Time" header
+        indicating the time taken to process the request.
     """
     start_time = time.perf_counter()
     response = await call_next(request)

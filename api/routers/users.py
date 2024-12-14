@@ -1,10 +1,15 @@
+"""
+This module defines the API endpoints for user management,
+including authentication, registration, and user information retrieval.
+"""
+
 import re
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from api.db.setup import session_dependency
+from api.db.setup import SessionDependency
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags
 from api.models.Token import Token
@@ -119,7 +124,7 @@ async def sign_up(
             openapi_examples=openapi_examples_UserCreate,
         )
     ],
-    session: session_dependency
+    session: SessionDependency
 ) -> User:
     if not re.match(
         "^(?=(.*[a-z]){3,})(?=(.*[A-Z]){2,})(?=(.*[0-9]){2,})(?=(.*[!@#$%^&*()\\-__+.]){2,}).{9,}$",

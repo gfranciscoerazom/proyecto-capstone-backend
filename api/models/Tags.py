@@ -1,3 +1,7 @@
+"""
+This module defines the tags used in the API for grouping operations.
+"""
+
 from enum import Enum
 from typing import NotRequired, TypedDict
 

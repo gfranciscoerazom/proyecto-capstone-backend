@@ -1,3 +1,7 @@
+"""
+This module contains pydantic models for tokens and token data.
+"""
+
 from pydantic import BaseModel, Field
 
 

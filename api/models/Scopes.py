@@ -1,3 +1,7 @@
+"""
+Defines scopes for the API.
+"""
+
 from enum import StrEnum, auto
 
 

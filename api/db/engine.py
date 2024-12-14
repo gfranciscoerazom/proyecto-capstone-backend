@@ -1,3 +1,7 @@
+"""
+This module contains the database engine.
+"""
+
 from sqlalchemy import Engine
 from sqlmodel import create_engine
 

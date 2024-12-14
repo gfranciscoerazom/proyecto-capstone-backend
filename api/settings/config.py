@@ -1,3 +1,31 @@
+"""
+This module defines the application's settings using Pydantic's BaseSettings
+
+It centralizes configuration parameters, loading them from environment variables 
+with the help of `pydantic-settings`. These settings are crucial for various 
+aspects of the application, including:
+
+- **Security:** Managing the secret key and algorithm for JWT token generation.
+- **Database:** Specifying the database connection URL.
+- **Token Management:** Defining the token expiration time.
+
+The settings are made accessible throughout the application using FastAPI's 
+dependency injection system via the `SettingsDependency` variable.
+
+**Key Settings:**
+
+- `SECRET_KEY`: A secret key used for signing JWT tokens. It should be a 
+   strong, randomly generated string.
+- `ALGORITHM`: The algorithm used for signing JWT tokens (e.g., HS256).
+- `ACCESS_TOKEN_EXPIRE_MINUTES`: The duration (in minutes) for which access 
+   tokens are valid.
+- `DATABASE_URL`: The connection URL for the database, including the database 
+   type, credentials, and database name.
+
+This approach ensures that configuration is well-organized, type-safe, and 
+easily accessible across the application.
+"""
+
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Final

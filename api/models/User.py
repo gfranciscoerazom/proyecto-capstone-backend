@@ -1,3 +1,7 @@
+"""
+This module contains pydantic models and functions for user management.
+"""
+
 from typing import Annotated, Any, Literal
 
 import jwt
@@ -199,6 +203,8 @@ def get_user(
             return session.exec(select(User).where(User.email == email)).first()
         if user_id:
             return session.get(User, user_id)
+
+    return None
 
 
 def authenticate_user(email: EmailStr, password: str) -> User | Literal[False]:
