@@ -126,13 +126,16 @@ async def sign_up(
     ],
     session: SessionDependency
 ) -> User:
-    if not re.match(
-        "^(?=(.*[a-z]){3,})(?=(.*[A-Z]){2,})(?=(.*[0-9]){2,})(?=(.*[!@#$%^&*()\\-__+.]){2,}).{9,}$",
-        user.password
+    if (
+        len(user.password) < 9 or
+        len(re.findall(r"[a-z]", user.password)) < 3 or
+        len(re.findall(r"[A-Z]", user.password)) < 2 or
+        len(re.findall(r"\d", user.password)) < 2 or
+        len(re.findall(r"[¡!@#$%^¿?&*()\-_+./\\]", user.password)) < 2
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain at least 3 lowercase, 2 uppercase, 2 digits, 2 special character and be at least 8 characters long.",
+            detail="Password must contain at least 3 lowercase, 2 uppercase, 2 digits, 2 special character and be at least 9 characters long.",
         )
 
     hashed_password: bytes = get_password_hash(user.password)
