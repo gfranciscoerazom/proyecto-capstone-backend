@@ -1,5 +1,5 @@
-# Created by https://www.toptal.com/developers/gitignore/api/windows,linux,macos,python,visualstudiocode,pycharm+all,pycharm,pycharm+iml,git,pydev,jetbrains,jetbrains+all,jetbrains+iml,images,database
-# Edit at https://www.toptal.com/developers/gitignore?templates=windows,linux,macos,python,visualstudiocode,pycharm+all,pycharm,pycharm+iml,git,pydev,jetbrains,jetbrains+all,jetbrains+iml,images,database
+# Created by https://www.toptal.com/developers/gitignore/api/git,linux,macos,pydev,images,python,pycharm,windows,database,jetbrains,pycharm+all,pycharm+iml,jetbrains+all,jetbrains+iml,visualstudiocode,sonarqube,sonar
+# Edit at https://www.toptal.com/developers/gitignore?templates=git,linux,macos,pydev,images,python,pycharm,windows,database,jetbrains,pycharm+all,pycharm+iml,jetbrains+all,jetbrains+iml,visualstudiocode,sonarqube,sonar
 
 ### Database ###
 *.accdb
@@ -724,6 +724,23 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
+### Sonar ###
+#Sonar generated dir
+/.sonar/
+
+### SonarQube ###
+# SonarQube ignore files.
+#
+# https://docs.sonarqube.org/display/SCAN/Analyzing+with+SonarQube+Scanner
+# Sonar Scanner working directories
+.sonar/
+.sonarqube/
+.scannerwork/
+
+# http://www.sonarlint.org/commandline/
+# SonarLint working directories, configuration files (including credentials)
+.sonarlint/
+
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/settings.json
@@ -769,4 +786,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.toptal.com/developers/gitignore/api/windows,linux,macos,python,visualstudiocode,pycharm+all,pycharm,pycharm+iml,git,pydev,jetbrains,jetbrains+all,jetbrains+iml,images,database
+# End of https://www.toptal.com/developers/gitignore/api/git,linux,macos,pydev,images,python,pycharm,windows,database,jetbrains,pycharm+all,pycharm+iml,jetbrains+all,jetbrains+iml,visualstudiocode,sonarqube,sonar
