@@ -1,4 +1,8 @@
 {
     "IDX.aI.enableInlineCompletion": true,
-    "IDX.aI.enableCodebaseIndexing": true
+    "IDX.aI.enableCodebaseIndexing": true,
+    "sonarlint.connectedMode.project": {
+        "connectionId": "gfranciscoerazom",
+        "projectKey": "gfranciscoerazom_proyecto-capstone-backend"
+    }
 }
