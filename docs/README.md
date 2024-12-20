@@ -36,12 +36,25 @@ This project is a FastAPI-based application that provides user authentication an
     pip install "fastapi[all]" PyJWT bcrypt Faker sqlmodel deepface ipykernel pytest isort
     ```
 
+4. **Add the `.env` file:**
+
+    Create a `.env` file in the root directory with the following content:
+
+    ```properties
+    # to get a secret key run:
+    # openssl rand -hex 32
+    SECRET_KEY="your_secret_key"
+    ALGORITHM="HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES=30
+    DATABASE_URL="sqlite:///data/database.db"
+    ```
+
 ## Running the Application
 
 1. **Start the FastAPI server:**
 
     ```sh
-    fastapi run main # In development mode use fastapi dev main
+    fastapi dev main # In production use fastapi run main
     ```
 
 2. **Access the application:**
