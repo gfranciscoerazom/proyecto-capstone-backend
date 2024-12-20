@@ -13,7 +13,7 @@ from pydantic import EmailStr, ValidationError
 from sqlmodel import Field, Session, SQLModel, select  # type: ignore
 
 from api.db.engine import engine
-from api.models.Scopes import Scopes
+from api.models.Role import Role
 from api.models.Token import TokenData
 from api.security.security import oauth2_scheme, verify_password
 from api.settings.config import settings
@@ -62,8 +62,8 @@ class User(UserBase, table=True):
         title="User status",
         description="The status of the user. If True, the user is disabled."
     )
-    role: str = Field(
-        default=Scopes.ASSISTANT,
+    role: Role = Field(
+        default=Role.ASSISTANT,
 
         title="User role",
         description="The role of the user. Used for authorization.",
@@ -84,7 +84,7 @@ class UserPublic(UserBase):
         title="User status",
         description="The status of the user. If True, the user is disabled."
     )
-    role: str = Field(
+    role: Role = Field(
         title="User role",
         description="The role of the user. Used for authorization.",
     )
@@ -126,7 +126,7 @@ class UserUpdate(SQLModel):
         title="User status",
         description="The status of the user. If True, the user is disabled."
     )
-    role: str | None = Field(
+    role: Role | None = Field(
         default=None,
 
         title="User role",
@@ -264,7 +264,7 @@ def get_current_user(
     if not (user := get_user(email=token_data.username)):
         raise credentials_exception
 
-    if not any(scope in token_data.scopes for scope in security_scopes.scopes):
+    if not all(scope in token_data.scopes for scope in security_scopes.scopes):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not enough permissions",

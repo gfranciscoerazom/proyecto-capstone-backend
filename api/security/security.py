@@ -15,7 +15,6 @@ from api.settings.config import settings
 # region variables
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/users/token",
-    # TODO: Determine if omitting the scopes parameter is a good idea.
     scopes=scopes,  # type: ignore
 )
 # endregion

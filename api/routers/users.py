@@ -66,10 +66,21 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    allowed_scopes: set[Scopes] = user.role.get_allowed_scopes()
+
+    if not all(scope in allowed_scopes for scope in form_data.scopes):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not enough permissions",
+            headers={
+                "WWW-Authenticate": f'Bearer scope="{", ".join(scope.value for scope in allowed_scopes)}"'
+            },
+        )
+
     access_token: str = create_access_token(
         data={
             "sub": user.email,
-            "scopes": [user.role]
+            "scopes": form_data.scopes,
         }
     )
 
@@ -88,7 +99,7 @@ async def read_users_me(
         User,
         Security(
             get_current_active_user,
-            scopes=[Scopes.ASSISTANT, Scopes.ADMIN]
+            scopes=[Scopes.USER]
         )
     ],
 ) -> User:
