@@ -2,14 +2,15 @@
 This module contains pydantic models and functions for user management.
 """
 
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import jwt
 from faker import Faker
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, UploadFile, status
 from fastapi.openapi.models import Example
 from fastapi.security import SecurityScopes
-from pydantic import EmailStr, ValidationError
+from pydantic import EmailStr, HttpUrl, ValidationError
 from sqlmodel import Field, Session, SQLModel, select  # type: ignore
 
 from api.db.engine import engine
@@ -45,7 +46,7 @@ class User(UserBase, table=True):
 
     Represents a user in the database. Used for save and retrieve user data from the database.
     """
-    id: int = Field(
+    id: int | None = Field(
         default=None,
         primary_key=True,
 
@@ -68,6 +69,13 @@ class User(UserBase, table=True):
         title="User role",
         description="The role of the user. Used for authorization.",
     )
+    image_url: str = Field(
+        unique=True,
+        index=True,
+
+        title="Image Path",
+        description="The path to the user's face image.",
+    )
 
 
 class UserPublic(UserBase):
@@ -88,6 +96,10 @@ class UserPublic(UserBase):
         title="User role",
         description="The role of the user. Used for authorization.",
     )
+    image_url: HttpUrl = Field(
+        title="Image Path",
+        description="The path to the user's face image.",
+    )
 
 
 class UserCreate(UserBase):
@@ -99,6 +111,10 @@ class UserCreate(UserBase):
     password: str = Field(
         title="Password",
         description="The password of the user. Used for authentication.",
+    )
+    image: UploadFile = Field(
+        title="Profile Image",
+        description="The profile image of the user.",
     )
 
 
@@ -131,6 +147,12 @@ class UserUpdate(SQLModel):
 
         title="User role",
         description="The role of the user. Used for authorization.",
+    )
+    image: UploadFile | None = Field(
+        default=None,
+
+        title="Profile Image",
+        description="The profile image of the user.",
     )
 # endregion
 
@@ -295,4 +317,30 @@ def get_current_active_user(
             detail="Inactive user"
         )
     return current_user
+
+
+async def save_user_image(user: UserCreate, request: Request) -> HttpUrl:
+    """
+    Save the user's image to the server.
+
+    Args:
+        user (UserCreate): The user object containing the image file.
+        request (Request): The request object to get the URL details.
+
+    Returns:
+        HttpUrl: The URL where the image is saved.
+    """
+    image_path: Path = Path(f"./data/imgs/{user.email}.png")
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with image_path.open("wb") as image_file:
+        image_file.write(await user.image.read())
+
+    domain: None | str = request.url.hostname
+    schema: str = request.url.scheme
+    port: int | None = request.url.port
+    image_url: HttpUrl = HttpUrl(
+        url=f"{schema}://{domain}:{port}/data/imgs/{user.email}.png"
+    )
+    return image_url
 # endregion

@@ -6,7 +6,7 @@ including authentication, registration, and user information retrieval.
 import re
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Security, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Security, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from api.db.setup import SessionDependency
@@ -15,7 +15,7 @@ from api.models.Tags import Tags
 from api.models.Token import Token
 from api.models.User import (User, UserCreate, UserPublic, authenticate_user,
                              get_current_active_user,
-                             openapi_examples_UserCreate)
+                             openapi_examples_UserCreate, save_user_image)
 from api.security.security import create_access_token, get_password_hash
 
 router = APIRouter(
@@ -129,13 +129,15 @@ async def read_users_me(
 async def sign_up(
     user: Annotated[
         UserCreate,
-        Body(
+        Form(
             title="User to create",
             description="The user to be created",
             openapi_examples=openapi_examples_UserCreate,
+            media_type="multipart/form-data"
         )
     ],
-    session: SessionDependency
+    session: SessionDependency,
+    request: Request,
 ) -> User:
     if (
         len(user.password) < 9 or
@@ -150,7 +152,14 @@ async def sign_up(
         )
 
     hashed_password: bytes = get_password_hash(user.password)
-    extra_data: dict[str, bytes] = {"hashed_password": hashed_password}
+
+    image_path: str = str(await save_user_image(user, request))
+
+    extra_data: dict[str, bytes | str] = {
+        "hashed_password": hashed_password,
+        "image_url": image_path
+    }
+
     db_user: User = User.model_validate(user, update=extra_data)
     session.add(db_user)
     session.commit()
