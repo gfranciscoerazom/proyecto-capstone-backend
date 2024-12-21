@@ -3,7 +3,6 @@ This module defines the API endpoints for user management,
 including authentication, registration, and user information retrieval.
 """
 
-import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Security, status
@@ -16,7 +15,7 @@ from api.models.Token import Token
 from api.models.User import (User, UserCreate, UserPublic, authenticate_user,
                              get_current_active_user,
                              openapi_examples_UserCreate, save_user_image)
-from api.security.security import create_access_token, get_password_hash
+from api.security.security import create_access_token, get_password_hash, validate_password
 
 router = APIRouter(
     prefix="/users",
@@ -139,17 +138,7 @@ async def sign_up(
     session: SessionDependency,
     request: Request,
 ) -> User:
-    if (
-        len(user.password) < 9 or
-        len(re.findall(r"[a-z]", user.password)) < 3 or
-        len(re.findall(r"[A-Z]", user.password)) < 2 or
-        len(re.findall(r"\d", user.password)) < 2 or
-        len(re.findall(r"[¡!@#$%^¿?&*()\-_+./\\]", user.password)) < 2
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain at least 3 lowercase, 2 uppercase, 2 digits, 2 special character and be at least 9 characters long.",
-        )
+    validate_password(user.password)
 
     hashed_password: bytes = get_password_hash(user.password)
 
