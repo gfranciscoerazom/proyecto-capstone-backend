@@ -4,6 +4,7 @@ This module contains pydantic models and functions for user management.
 
 from pathlib import Path
 from typing import Annotated, Any, Literal
+import uuid
 
 import jwt
 from faker import Faker
@@ -18,6 +19,7 @@ from api.models.Role import Role
 from api.models.Token import TokenData
 from api.security.security import oauth2_scheme, verify_password
 from api.settings.config import settings
+from deepface import DeepFace  # type: ignore
 
 # region vars
 f = Faker()
@@ -319,6 +321,30 @@ def get_current_active_user(
     return current_user
 
 
+def is_single_person(image_path: Path) -> bool:
+    """
+    Check if the image at the given path contains exactly one person.
+
+    Args:
+        image_path (Path): The path to the image file.
+
+    Returns:
+        bool: True if the image contains exactly one person, False otherwise.
+    """
+    try:
+        face_objs = DeepFace.extract_faces(  # type: ignore
+            img_path=str(image_path),
+            detector_backend="yunet",
+            align=True,
+        )
+    except ValueError as e:
+        if "Face could not be detected" in str(e):
+            return False
+        raise e
+
+    return len(face_objs) == 1
+
+
 async def save_user_image(user: UserCreate, request: Request) -> HttpUrl:
     """
     Save the user's image to the server.
@@ -330,17 +356,29 @@ async def save_user_image(user: UserCreate, request: Request) -> HttpUrl:
     Returns:
         HttpUrl: The URL where the image is saved.
     """
-    image_path: Path = Path(f"./data/imgs/{user.email}.png")
+    new_uuid: uuid.UUID = uuid.uuid4()
+    image_path: Path = Path(
+        f"./data/imgs/{new_uuid}.png"
+    )
     image_path.parent.mkdir(parents=True, exist_ok=True)
 
     with image_path.open("wb") as image_file:
         image_file.write(await user.image.read())
 
+    if not is_single_person(image_path):
+        if image_path.exists():
+            image_path.unlink()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The image must contain exactly one person",
+        )
+
     domain: None | str = request.url.hostname
     schema: str = request.url.scheme
     port: int | None = request.url.port
     image_url: HttpUrl = HttpUrl(
-        url=f"{schema}://{domain}:{port}/data/imgs/{user.email}.png"
+        url=f"{schema}://{domain}:{port}/data/imgs/{new_uuid}.png"
     )
     return image_url
 # endregion

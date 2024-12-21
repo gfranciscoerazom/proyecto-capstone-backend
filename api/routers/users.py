@@ -142,11 +142,11 @@ async def sign_up(
 
     hashed_password: bytes = get_password_hash(user.password)
 
-    image_path: str = str(await save_user_image(user, request))
+    image_url = await save_user_image(user, request)
 
     extra_data: dict[str, bytes | str] = {
         "hashed_password": hashed_password,
-        "image_url": image_path
+        "image_url": str(image_url),
     }
 
     db_user: User = User.model_validate(user, update=extra_data)
