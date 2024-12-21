@@ -14,7 +14,6 @@
                 "./api/main.py"
             ],
             "jinja": true,
-            "console": "internalConsole",
             "serverReadyAction": {
                 "pattern": ".+http://127.0.0.1:(\\d+)",
                 "uriFormat": "http://127.0.0.1:%s/docs",
