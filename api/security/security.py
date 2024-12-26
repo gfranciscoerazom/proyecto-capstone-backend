@@ -2,13 +2,13 @@
 This module provides security related functions, including password hashing,
 verification, and JWT token creation.
 """
-from datetime import datetime, timedelta, timezone
 import re
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import bcrypt
-from fastapi import HTTPException, status
 import jwt
+from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from api.models.Scopes import scopes

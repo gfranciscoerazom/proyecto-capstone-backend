@@ -2,16 +2,18 @@
 This module contains pydantic models and functions for user management.
 """
 
+import uuid
 from pathlib import Path
 from typing import Annotated, Any, Literal
-import uuid
+from uuid import UUID
 
 import jwt
+from deepface import DeepFace  # type: ignore
 from faker import Faker
-from fastapi import Depends, HTTPException, Request, UploadFile, status
+from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.openapi.models import Example
 from fastapi.security import SecurityScopes
-from pydantic import EmailStr, HttpUrl, ValidationError
+from pydantic import EmailStr, ValidationError
 from sqlmodel import Field, Session, SQLModel, select  # type: ignore
 
 from api.db.engine import engine
@@ -19,7 +21,6 @@ from api.models.Role import Role
 from api.models.Token import TokenData
 from api.security.security import oauth2_scheme, verify_password
 from api.settings.config import settings
-from deepface import DeepFace  # type: ignore
 
 # region vars
 f = Faker()
@@ -71,11 +72,11 @@ class User(UserBase, table=True):
         title="User role",
         description="The role of the user. Used for authorization.",
     )
-    image_url: str = Field(
+    image_uuid: UUID = Field(
         unique=True,
         index=True,
 
-        title="Image Path",
+        title="Image UUID",
         description="The path to the user's face image.",
     )
 
@@ -98,8 +99,8 @@ class UserPublic(UserBase):
         title="User role",
         description="The role of the user. Used for authorization.",
     )
-    image_url: HttpUrl = Field(
-        title="Image Path",
+    image_uuid: UUID = Field(
+        title="Image UUID",
         description="The path to the user's face image.",
     )
 
@@ -345,7 +346,7 @@ def is_single_person(image_path: Path) -> bool:
     return len(face_objs) == 1
 
 
-async def save_user_image(user: UserCreate, request: Request) -> HttpUrl:
+async def save_user_image(image: UploadFile, folder: str = "imgs") -> UUID:
     """
     Save the user's image to the server.
 
@@ -356,14 +357,14 @@ async def save_user_image(user: UserCreate, request: Request) -> HttpUrl:
     Returns:
         HttpUrl: The URL where the image is saved.
     """
-    new_uuid: uuid.UUID = uuid.uuid4()
+    image_uuid: UUID = uuid.uuid4()
     image_path: Path = Path(
-        f"./data/imgs/{new_uuid}.png"
+        f"./data/{folder}/{image_uuid.hex}.png"
     )
     image_path.parent.mkdir(parents=True, exist_ok=True)
 
     with image_path.open("wb") as image_file:
-        image_file.write(await user.image.read())
+        image_file.write(await image.read())
 
     if not is_single_person(image_path):
         if image_path.exists():
@@ -374,11 +375,5 @@ async def save_user_image(user: UserCreate, request: Request) -> HttpUrl:
             detail="The image must contain exactly one person",
         )
 
-    domain: None | str = request.url.hostname
-    schema: str = request.url.scheme
-    port: int | None = request.url.port
-    image_url: HttpUrl = HttpUrl(
-        url=f"{schema}://{domain}:{port}/data/imgs/{new_uuid}.png"
-    )
-    return image_url
+    return image_uuid
 # endregion

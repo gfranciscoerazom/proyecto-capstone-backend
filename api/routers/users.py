@@ -3,10 +3,15 @@ This module defines the API endpoints for user management,
 including authentication, registration, and user information retrieval.
 """
 
+from pathlib import Path
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Security, status
+from deepface import DeepFace  # type: ignore
+from fastapi import (APIRouter, Depends, File, Form, HTTPException, Security,
+                     UploadFile, status)
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlmodel import select
 
 from api.db.setup import SessionDependency
 from api.models.Scopes import Scopes
@@ -15,7 +20,8 @@ from api.models.Token import Token
 from api.models.User import (User, UserCreate, UserPublic, authenticate_user,
                              get_current_active_user,
                              openapi_examples_UserCreate, save_user_image)
-from api.security.security import create_access_token, get_password_hash, validate_password
+from api.security.security import (create_access_token, get_password_hash,
+                                   validate_password)
 
 router = APIRouter(
     prefix="/users",
@@ -136,17 +142,34 @@ async def sign_up(
         )
     ],
     session: SessionDependency,
-    request: Request,
 ) -> User:
+    """
+    Endpoint to sign up a new user.
+
+    This endpoint allows users to create a new account by providing the necessary
+    information.
+
+    \f
+
+    Args:
+        user (UserCreate): The user information to create a new account.
+        session (SessionDependency): The database session dependency.
+
+    Returns:
+        UserPublic: The newly created user.
+
+    Raises:
+        HTTPException: If the password validation fails.
+    """
     validate_password(user.password)
 
     hashed_password: bytes = get_password_hash(user.password)
 
-    image_url = await save_user_image(user, request)
+    image_uuid: UUID = await save_user_image(user.image)
 
-    extra_data: dict[str, bytes | str] = {
+    extra_data: dict[str, bytes | UUID] = {
         "hashed_password": hashed_password,
-        "image_url": str(image_url),
+        "image_uuid": image_uuid,
     }
 
     db_user: User = User.model_validate(user, update=extra_data)
@@ -154,4 +177,84 @@ async def sign_up(
     session.commit()
     session.refresh(db_user)
     return db_user
+
+
+@router.post(
+    "/obtain-users-by-image",
+    response_model=list[UserPublic],
+    dependencies=[Security(get_current_active_user, scopes=[Scopes.ADMIN])],
+
+    summary="Get users by image provided",
+    response_description="Successful Response with a list of users found that are similar to the person in the image",
+)
+async def obtain_user_by_image(
+    image: Annotated[
+        UploadFile,
+        File(
+            title="Image of a registered user",
+            description="A image of a registered user to use it to find the user",
+        )
+    ],
+    session: SessionDependency,
+) -> list[User]:
+    """
+    Endpoint to obtain users by image.
+
+    This endpoint allows users to find registered users by providing an image.
+    The image is compared against the database to find similar users.
+
+    \f
+
+    Args:
+        image (UploadFile): The image of a registered user.
+        session (SessionDependency): The database session dependency.
+
+    Returns:
+        list[User]: A list of users found that are similar to the person in the image.
+
+    Raises:
+        HTTPException: If no users are found in the images database or the main database.
+    """
+    async def delete_temp_image(temp_image_path: Path):
+        if temp_image_path.exists():
+            temp_image_path.unlink()
+
+    temp_image_uuid: UUID = await save_user_image(image, folder="temp_imgs")
+    temp_image_path: Path = Path(
+        "./data/temp_imgs"
+    ) / f"{temp_image_uuid.hex}.png"
+
+    images_df = DeepFace.find(  # type: ignore
+        img_path=str(temp_image_path),
+        db_path=str(Path("./data/imgs")),
+        model_name="Facenet512",
+        detector_backend="yunet",
+    )
+
+    if len(images_df[0]) < 1:
+        await delete_temp_image(temp_image_path)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in images database",
+        )
+
+    users: list[User | None] = [
+        session.exec(
+            select(User).
+            where(
+                User.image_uuid == UUID(Path(img).stem)  # type: ignore
+            )
+        ).first()
+        for img in images_df[0]['identity']  # type: ignore
+    ]
+
+    if not all(users):
+        await delete_temp_image(temp_image_path)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in database",
+        )
+
+    await delete_temp_image(temp_image_path)
+    return users  # type: ignore
 # endregion

@@ -28,7 +28,9 @@
 		"ms-python.vscode-python-envs",
 		"visualstudioexptteam.vscodeintellicode",
 		"visualstudioexptteam.intellicode-api-usage-examples",
-		"visualstudioexptteam.vscodeintellicode-completions"
+		"visualstudioexptteam.vscodeintellicode-completions",
+		"mtxr.sqltools",
+		"mtxr.sqltools-driver-sqlite",
 	],
 	// List of extensions recommended by VS Code that should not be recommended for users of this workspace.
 	"unwantedRecommendations": []
