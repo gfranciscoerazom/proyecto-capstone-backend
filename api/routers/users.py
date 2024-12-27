@@ -14,6 +14,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import select
 
 from api.db.setup import SessionDependency
+from api.models.Role import Role
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags
 from api.models.Token import Token
@@ -257,4 +258,53 @@ async def obtain_user_by_image(
 
     await delete_temp_image(temp_image_path)
     return users  # type: ignore
+
+
+@router.get(
+    "/promote-to-admin/{user_id}",
+    response_model=UserPublic,
+    dependencies=[Security(get_current_active_user, scopes=[Scopes.ADMIN])],
+
+    summary="Promote a user to admin",
+    response_description="Successful Response with the promoted user",
+)
+async def promote_to_admin(
+    user_id: int,
+    session: SessionDependency,
+) -> User:
+    """
+    Endpoint to promote a user to admin.
+
+    This endpoint allows an admin to promote an assistant user to an admin role.
+
+    \f
+
+    Args:
+        user_id (int): The ID of the user to be promoted.
+        session (SessionDependency): The database session dependency.
+
+    Returns:
+        UserPublic: The promoted user.
+
+    Raises:
+        HTTPException: If the user is not found or is already an admin.
+    """
+
+    if not (user := session.get(User, user_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if user.role == Role.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already an admin",
+        )
+
+    user.role = Role.ADMIN
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
 # endregion
