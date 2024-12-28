@@ -29,6 +29,13 @@ router = APIRouter(
     tags=[Tags.users],
 )
 
+# region Variables
+HTTPException404UserNotFound = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail="User not found",
+)
+# endregion
+
 
 # region Endpoints
 @router.post(
@@ -177,6 +184,7 @@ async def sign_up(
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
+
     return db_user
 
 
@@ -257,6 +265,7 @@ async def obtain_user_by_image(
         )
 
     await delete_temp_image(temp_image_path)
+
     return users  # type: ignore
 
 
@@ -291,10 +300,7 @@ async def promote_to_admin(
     """
 
     if not (user := session.get(User, user_id)):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+        raise HTTPException404UserNotFound
 
     if user.role == Role.ADMIN:
         raise HTTPException(
@@ -306,6 +312,7 @@ async def promote_to_admin(
     session.add(user)
     session.commit()
     session.refresh(user)
+
     return user
 
 
@@ -339,13 +346,11 @@ async def delete_user(
         HTTPException: If the user is not found.
     """
     if not (user := session.get(User, user_id)):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+        raise HTTPException404UserNotFound
 
     session.delete(user)
     session.commit()
+
     return user
 
 
@@ -379,9 +384,7 @@ async def get_user_by_id(
         HTTPException: If the user is not found.
     """
     if not (user := session.get(User, user_id)):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+        raise HTTPException404UserNotFound
+
     return user
 # endregion
