@@ -307,4 +307,81 @@ async def promote_to_admin(
     session.commit()
     session.refresh(user)
     return user
+
+
+@router.delete(
+    "/delete/{user_id}",
+    response_model=UserPublic,
+    dependencies=[Security(get_current_active_user, scopes=[Scopes.ADMIN])],
+
+    summary="Delete a user",
+    response_description="Successful Response with the deleted user",
+)
+async def delete_user(
+    user_id: int,
+    session: SessionDependency,
+) -> User:
+    """
+    Endpoint to delete a user.
+
+    This endpoint allows an admin to delete a user by their ID.
+
+    \f
+
+    Args:
+        user_id (int): The ID of the user to be deleted.
+        session (SessionDependency): The database session dependency.
+
+    Returns:
+        UserPublic: The deleted user.
+
+    Raises:
+        HTTPException: If the user is not found.
+    """
+    if not (user := session.get(User, user_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    session.delete(user)
+    session.commit()
+    return user
+
+
+@router.get(
+    "/{user_id}",
+    response_model=UserPublic,
+    dependencies=[Security(get_current_active_user, scopes=[Scopes.ADMIN])],
+
+    summary="Get a user by ID",
+    response_description="Successful Response with the user",
+)
+async def get_user_by_id(
+    user_id: int,
+    session: SessionDependency,
+) -> User:
+    """
+    Endpoint to get a user by ID.
+
+    This endpoint allows an admin to retrieve a user by their ID.
+
+    \f
+
+    Args:
+        user_id (int): The ID of the user to be retrieved.
+        session (SessionDependency): The database session dependency.
+
+    Returns:
+        UserPublic: The retrieved user.
+
+    Raises:
+        HTTPException: If the user is not found.
+    """
+    if not (user := session.get(User, user_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return user
 # endregion
