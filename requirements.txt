@@ -1,0 +1,10 @@
+fastapi[all]
+PyJWT
+bcrypt
+Faker
+sqlmodel
+deepface
+ipykernel
+pytest
+isort
+tf-keras
