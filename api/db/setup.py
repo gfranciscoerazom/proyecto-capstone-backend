@@ -8,7 +8,9 @@ from fastapi import Depends
 from sqlmodel import Session, SQLModel
 
 from api.db.engine import engine
+from api.models.Event import Event  # type: ignore
 from api.models.User import User  # type: ignore
+from api.models.UserEventLink import UserEventLink  # type: ignore
 
 
 # region functions

@@ -4,7 +4,7 @@ This module contains pydantic models and functions for user management.
 
 import uuid
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 from uuid import UUID
 
 import jwt
@@ -14,13 +14,18 @@ from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.openapi.models import Example
 from fastapi.security import SecurityScopes
 from pydantic import EmailStr, ValidationError
-from sqlmodel import Field, Session, SQLModel, select  # type: ignore
+from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
+                      select)
 
 from api.db.engine import engine
 from api.models.Role import Role
 from api.models.Token import TokenData
+from api.models.UserEventLink import UserEventLink
 from api.security.security import oauth2_scheme, verify_password
 from api.settings.config import settings
+
+if TYPE_CHECKING:
+    from api.models.Event import Event
 
 # region vars
 f = Faker()
@@ -78,6 +83,10 @@ class User(UserBase, table=True):
 
         title="Image UUID",
         description="The path to the user's face image.",
+    )
+    events: list["Event"] = Relationship(
+        back_populates="users",
+        link_model=UserEventLink
     )
 
 

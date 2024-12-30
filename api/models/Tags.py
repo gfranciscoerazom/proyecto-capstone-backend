@@ -29,6 +29,7 @@ class Tags(Enum):
     Enum for the tags used in the API.
     """
     users = "users"
+    events = "events"
 # endregion
 
 
@@ -37,6 +38,10 @@ tags_metadata: list[TagMetadata] = [
     {
         "name": "users",
         "description": "Operations with users. The **login** logic is also here.",
+    },
+    {
+        "name": "events",
+        "description": "Operations with events.",
     },
 ]
 # endregion

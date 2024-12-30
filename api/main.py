@@ -18,7 +18,7 @@ from api.db.setup import create_db_and_tables
 from api.models.Role import Role
 from api.models.Tags import tags_metadata
 from api.models.User import User
-from api.routers import users
+from api.routers import users, events
 from api.security.security import get_password_hash
 
 
@@ -86,6 +86,7 @@ app = FastAPI(
 
 # region Routers
 app.include_router(users.router)
+app.include_router(events.router)
 # endregion
 
 
