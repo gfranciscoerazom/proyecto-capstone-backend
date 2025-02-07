@@ -2,7 +2,10 @@
 This module contains SQLModel models for linking users and events.
 """
 
-from sqlmodel import Field, SQLModel  # type: ignore
+from sqlmodel import Field, Relationship, SQLModel  # type: ignore
+
+from api.models.Event import Event
+from api.models.User import User
 
 
 class UserEventLink(SQLModel, table=True):
@@ -33,3 +36,6 @@ class UserEventLink(SQLModel, table=True):
         title="Attendance of the user",
         description="Field to indicate if the user attended the event",
     )
+
+    user: User = Relationship(back_populates="event_links")
+    event: Event = Relationship(back_populates="user_links")

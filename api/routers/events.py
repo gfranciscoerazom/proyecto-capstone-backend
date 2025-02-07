@@ -1,6 +1,5 @@
-
 from typing import Annotated
-from fastapi import APIRouter, Form, HTTPException, Security, status
+from fastapi import APIRouter, Form, HTTPException, Query, Security, status
 
 from api.db.setup import SessionDependency
 from api.models.Event import Event, EventCreate, EventPublic
@@ -61,4 +60,44 @@ async def add_event(
     session.commit()
     session.refresh(new_event)
     return new_event
+
+
+@router.get(
+    "/",
+    response_model=EventPublic,
+    dependencies=[Security(get_current_active_user, scopes=[Scopes.ADMIN])],
+
+    summary="Get an event by ID",
+    response_description="Successful Response with the event",
+)
+async def get_event_by_id(
+    event_id: Annotated[int, Query(
+        ge=1,
+
+        title="Event ID",
+        description="The ID of the event to be retrieved.",
+    )],
+    session: SessionDependency,
+) -> Event:
+    """
+    Endpoint to get an event by ID.
+
+    This endpoint allows users to retrieve an event by its ID.
+
+    \f
+
+    Args:
+        event_id (int): The ID of the event to be retrieved.
+        session (SessionDependency): The database session dependency.
+
+    Returns:
+        EventPublic: The retrieved event.
+
+    Raises:
+        HTTPException: If the event is not found.
+    """
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException404EventNotFound
+
+    return event
 # endregion

@@ -20,12 +20,13 @@ from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
 from api.db.engine import engine
 from api.models.Role import Role
 from api.models.Token import TokenData
-from api.models.UserEventLink import UserEventLink
+if TYPE_CHECKING:
+    from api.models.UserEventLink import UserEventLink
 from api.security.security import oauth2_scheme, verify_password
 from api.settings.config import settings
 
-if TYPE_CHECKING:
-    from api.models.Event import Event
+# if TYPE_CHECKING:
+#     from api.models.Event import Event
 
 # region vars
 f = Faker()
@@ -84,10 +85,7 @@ class User(UserBase, table=True):
         title="Image UUID",
         description="The path to the user's face image.",
     )
-    events: list["Event"] = Relationship(
-        back_populates="users",
-        link_model=UserEventLink
-    )
+    event_links: list["UserEventLink"] = Relationship(back_populates="user")
 
 
 class UserPublic(UserBase):

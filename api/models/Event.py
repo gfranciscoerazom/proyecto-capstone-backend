@@ -8,10 +8,11 @@ from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel  # type: ignore
 
-from api.models.UserEventLink import UserEventLink
-
 if TYPE_CHECKING:
-    from api.models.User import User
+    from api.models.UserEventLink import UserEventLink
+
+# if TYPE_CHECKING:
+#     from api.models.User import User
 
 
 class EventBase(SQLModel):
@@ -51,10 +52,7 @@ class Event(EventBase, table=True):
         title="Event ID",
         description="The unique identifier of the event.",
     )
-    users: list["User"] = Relationship(
-        back_populates="events",
-        link_model=UserEventLink
-    )
+    user_links: list["UserEventLink"] = Relationship(back_populates="event")
 
 
 class EventPublic(EventBase):
