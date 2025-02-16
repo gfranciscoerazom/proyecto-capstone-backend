@@ -1,24 +1,16 @@
+from pathlib import Path
 from typing import Annotated
-from fastapi import APIRouter, Form, HTTPException, Query, Security, status
 
-from api.db.setup import SessionDependency
-from api.models.Event import Event, EventCreate, EventPublic
+from fastapi import APIRouter, Form, HTTPException, Security, status
+
+from api.db.database import Event, EventCreate, EventPublic, SessionDependency, get_current_active_user
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags
-from api.models.User import get_current_active_user
-
 
 router = APIRouter(
     prefix="/events",
     tags=[Tags.events],
 )
-
-# region Variables
-HTTPException404EventNotFound = HTTPException(
-    status_code=status.HTTP_404_NOT_FOUND,
-    detail="Event not found",
-)
-# endregion
 
 # region Endpoints
 
@@ -26,7 +18,12 @@ HTTPException404EventNotFound = HTTPException(
 @router.post(
     "/add",
     response_model=EventPublic,
-    dependencies=[Security(get_current_active_user, scopes=[Scopes.ADMIN])],
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ORGANIZER]
+        )
+    ],
 
     summary="Add an event",
     response_description="The added event",
@@ -65,18 +62,26 @@ async def add_event(
 @router.get(
     "/",
     response_model=EventPublic,
-    dependencies=[Security(get_current_active_user, scopes=[Scopes.ADMIN])],
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ORGANIZER]
+        )
+    ],
 
     summary="Get an event by ID",
     response_description="Successful Response with the event",
 )
 async def get_event_by_id(
-    event_id: Annotated[int, Query(
-        ge=1,
+    event_id: Annotated[
+        int,
+        Path(
+            ge=1,
 
-        title="Event ID",
-        description="The ID of the event to be retrieved.",
-    )],
+            title="Event ID",
+            description="The ID of the event to be retrieved.",
+        )
+    ],
     session: SessionDependency,
 ) -> Event:
     """
@@ -97,7 +102,10 @@ async def get_event_by_id(
         HTTPException: If the event is not found.
     """
     if not (event := session.get(Event, event_id)):
-        raise HTTPException404EventNotFound
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
 
     return event
 # endregion

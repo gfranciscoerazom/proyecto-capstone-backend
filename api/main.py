@@ -5,7 +5,6 @@ the API and orchestrates interactions with other modules.
 """
 
 import time
-import uuid
 from typing import Any, Callable
 
 import uvicorn
@@ -13,12 +12,10 @@ from fastapi import FastAPI, Request
 from fastapi.concurrency import asynccontextmanager
 from sqlmodel import Session, select
 
-from api.db.engine import engine
-from api.db.setup import create_db_and_tables
+from api.db.database import User, create_db_and_tables, engine
 from api.models.Role import Role
 from api.models.Tags import tags_metadata
-from api.models.User import User
-from api.routers import users, events
+from api.routers import assistant, users
 from api.security.security import get_password_hash
 
 
@@ -46,14 +43,15 @@ async def lifespan(app: FastAPI):
         if not (
             session.exec(
                 select(User).
-                where(User.email == "admin@example.com")
+                where(User.email == "admin@udla.edu.ec")
             ).first()
         ):
             admin_user = User(
-                email="admin@example.com",
+                first_name="Admin",
+                last_name="User",
+                email="admin@udla.edu.ec",
                 hashed_password=get_password_hash("admin"),
                 role=Role.ADMIN,
-                image_uuid=uuid.uuid4()
             )
             session.add(admin_user)
             session.commit()
@@ -86,7 +84,8 @@ app = FastAPI(
 
 # region Routers
 app.include_router(users.router)
-app.include_router(events.router)
+app.include_router(assistant.router)
+# app.include_router(events.router)
 # endregion
 
 

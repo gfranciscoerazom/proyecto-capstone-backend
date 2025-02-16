@@ -2,7 +2,7 @@
 This module defines the tags used in the API for grouping operations.
 """
 
-from enum import Enum
+from enum import StrEnum, auto
 from typing import NotRequired, TypedDict
 
 # region classes
@@ -24,12 +24,13 @@ TagMetadata = TypedDict(
 )
 
 
-class Tags(Enum):
+class Tags(StrEnum):
     """
     Enum for the tags used in the API.
     """
-    users = "users"
-    events = "events"
+    users = auto()
+    events = auto()
+    assistants = auto()
 # endregion
 
 
@@ -42,6 +43,10 @@ tags_metadata: list[TagMetadata] = [
     {
         "name": "events",
         "description": "Operations with events.",
+    },
+    {
+        "name": "assistants",
+        "description": "Operations with assistants.",
     },
 ]
 # endregion
