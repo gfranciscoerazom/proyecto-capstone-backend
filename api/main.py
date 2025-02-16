@@ -15,7 +15,7 @@ from sqlmodel import Session, select
 from api.db.database import User, create_db_and_tables, engine
 from api.models.Role import Role
 from api.models.Tags import tags_metadata
-from api.routers import assistant, users
+from api.routers import assistant, events, users
 from api.security.security import get_password_hash
 
 
@@ -85,7 +85,7 @@ app = FastAPI(
 # region Routers
 app.include_router(users.router)
 app.include_router(assistant.router)
-# app.include_router(events.router)
+app.include_router(events.router)
 # endregion
 
 

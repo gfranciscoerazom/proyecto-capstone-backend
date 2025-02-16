@@ -100,10 +100,10 @@ class User(UserBase, table=True):
 
     assistant: Optional["Assistant"] = Relationship(
         back_populates="user",
-    )  # ✅
+    )
     organized_events: list["Event"] = Relationship(
         back_populates="organizer",
-    )  # ✅
+    )
 
 
 class UserPublic(UserBase):
@@ -233,7 +233,7 @@ class Assistant(AssistantBase, table=True):
 
     user: User = Relationship(
         back_populates="assistant"
-    )  # ✅
+    )
 
     registrations: list["Registration"] = Relationship(
         back_populates="assistant"
@@ -417,10 +417,10 @@ class Event(EventBase, table=True):
 
     organizer: User = Relationship(
         back_populates="organized_events"
-    )  # ✅
+    )
     event_dates: list["EventDate"] = Relationship(
         back_populates="event"
-    )  # ✅
+    )
     registrations: list["Registration"] = Relationship(
         back_populates="event"
     )
@@ -515,7 +515,7 @@ class EventDate(EventDateBase, table=True):
 
     event: Event = Relationship(
         back_populates="event_dates"
-    )  # ✅
+    )
 
 
 class EventDatePublic(EventDateBase):
