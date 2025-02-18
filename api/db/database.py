@@ -44,7 +44,11 @@ def get_quito_time() -> datetime:
 # region User
 
 class UserBase(SQLModel):
-    """Base class for User models."""
+    """
+    Base class for User models.
+
+    This class is used to define the common attributes of the Users models.
+    """
     email: EmailStr = Field(
         index=True,
         unique=True,
@@ -389,11 +393,11 @@ class Event(EventBase, table=True):
         title="Created At",
         description="Event creation date and time, in Quito timezone"
     )
-    promo_photo: str = Field(
+    image_uuid: UUID = Field(
         unique=True,
 
-        title="Promo Photo",
-        description="Name of promo photo"
+        title="Event Image",
+        description="Path to event image"
     )
     is_cancelled: bool = Field(
         default=False,
@@ -444,14 +448,17 @@ class EventPublic(EventBase):
         title="Is Published",
         description="Event published status"
     )
-    # TODO: Foto promo
+    image_uuid: UUID = Field(
+        title="Event Image",
+        description="Path to event image"
+    )
 
 
 class EventCreate(EventBase):
     """Event create model for API requests."""
-    promo_photo: UploadFile = Field(
-        title="Promo Photo",
-        description="Name of promo photo"
+    image: UploadFile = Field(
+        title="Event Image",
+        description="Path to event image"
     )
 
 
@@ -469,8 +476,8 @@ class EventUpdate(SQLModel):
         default=None, title="Max Capacity", description="Event maximum capacity")
     venue_capacity: int | None = Field(
         default=None, title="Venue Capacity", description="Event venue capacity")
-    promo_photo: str | None = Field(
-        default=None, title="Promo Photo", description="Path to event promo photo")
+    image: str | None = Field(
+        default=None, title="Event Image", description="Path to event image")
     is_cancelled: bool | None = Field(
         default=None, title="Is Cancelled", description="Event cancellation status")
     organizer_id: int | None = Field(
@@ -808,8 +815,8 @@ def is_single_person(image_path: Path) -> bool:
     return len(face_objs) == 1
 
 
-async def save_user_image(image: UploadFile, folder: str = "imgs") -> UUID:
-    """Saves user image and returns UUID."""
+async def save_image(image: UploadFile, folder: str) -> UUID:
+    """Saves image and returns UUID."""
     image_uuid: UUID = uuid.uuid4()
     image_path: Path = Path(
         f"./data/{folder}/{image_uuid.hex}.png"
@@ -818,6 +825,31 @@ async def save_user_image(image: UploadFile, folder: str = "imgs") -> UUID:
 
     with image_path.open("wb") as image_file:
         image_file.write(await image.read())
+
+    return image_uuid
+
+
+async def save_user_image(image: UploadFile, folder: str = "people_imgs") -> UUID:
+    """Saves user image and returns UUID."""
+    # image_uuid: UUID = uuid.uuid4()
+    # image_path: Path = Path(
+    #     f"./data/{folder}/{image_uuid.hex}.png"
+    # )
+    # image_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # with image_path.open("wb") as image_file:
+    #     image_file.write(await image.read())
+
+    # if not is_single_person(image_path):
+    #     if image_path.exists():
+    #         image_path.unlink()
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="The image must contain exactly one person",
+    #     )
+    # return image_uuid
+    image_uuid: UUID = await save_image(image, folder)
+    image_path: Path = Path(f"./data/{folder}/{image_uuid.hex}.png")
 
     if not is_single_person(image_path):
         if image_path.exists():

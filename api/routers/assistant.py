@@ -123,12 +123,12 @@ async def add_user(
 @router.post(
     "/get-by-image",
     response_model=list[UserAssistantPublic],
-    dependencies=[
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.STAFF],
-        )
-    ],
+    # dependencies=[
+    #     Security(
+    #         get_current_active_user,
+    #         scopes=[Scopes.STAFF],
+    #     )
+    # ],
     summary="Get users by image provided",
     response_description="Successful Response with a list of users found that are similar to the person in the image",
 )
@@ -171,7 +171,7 @@ async def get_assistants_by_image(
 
     images_df = DeepFace.find(  # type: ignore
         img_path=str(temp_image_path),
-        db_path=str(pl.Path("./data/imgs")),
+        db_path=str(pl.Path("./data/people_imgs")),
         model_name="Facenet512",
         detector_backend="yunet",
     )
@@ -187,7 +187,7 @@ async def get_assistants_by_image(
         session.exec(
             select(Assistant).
             where(
-                Assistant.image_uuid == UUID(Path(img).stem)  # type: ignore
+                Assistant.image_uuid == UUID(pl.Path(img).stem)  # type: ignore
             )
         ).first()
         for img in images_df[0]['identity']  # type: ignore
@@ -206,14 +206,14 @@ async def get_assistants_by_image(
 
 
 @router.get(
-    "/get-by-id-number/",
+    "/get-by-id-number/{id_number}",
     response_model=UserAssistantPublic,
-    dependencies=[
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.STAFF],
-        )
-    ],
+    # dependencies=[
+    #     Security(
+    #         get_current_active_user,
+    #         scopes=[Scopes.STAFF],
+    #     )
+    # ],
     summary="Get user by ID number",
     response_description="Successful Response with the user found",
 )

@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
                 last_name="User",
                 email="admin@udla.edu.ec",
                 hashed_password=get_password_hash("admin"),
-                role=Role.ADMIN,
+                role=Role.ORGANIZER,
             )
             session.add(admin_user)
             session.commit()
