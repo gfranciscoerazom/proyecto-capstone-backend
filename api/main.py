@@ -17,6 +17,7 @@ from api.models.Role import Role
 from api.models.Tags import tags_metadata
 from api.routers import assistant, events, users
 from api.security.security import get_password_hash
+import pathlib as pl
 
 
 # region FastAPI Configuration
@@ -59,6 +60,13 @@ async def lifespan(app: FastAPI):
     yield
 
     # Code to run after the server stops
+    temp_imgs_path = pl.Path("./data/temp_imgs")
+    if temp_imgs_path.exists() and temp_imgs_path.is_dir():
+        for item in temp_imgs_path.iterdir():
+            if item.name == ".gitkeep":
+                continue
+            else:
+                item.unlink()
 
 app = FastAPI(
     title="Proyecto CAPSTONE - Backend",
