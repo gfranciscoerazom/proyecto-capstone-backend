@@ -1,18 +1,17 @@
-import uuid
 from datetime import date, datetime, time, timedelta, timezone
-from pathlib import Path
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
 import jwt
 from deepface import DeepFace  # type: ignore
 from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.security import SecurityScopes
-from pydantic import EmailStr, ValidationError
+from pydantic import EmailStr, PositiveInt, ValidationError, model_validator
 from sqlalchemy import Engine
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
+from api.db.validations import Password, PhoneNumber, is_valid_ecuadorian_id, is_valid_ecuadorian_passport
 from api.models.Gender import Gender
 from api.models.Role import Role
 from api.models.Token import TokenData
@@ -39,6 +38,151 @@ def get_quito_time() -> datetime:
     """Función para obtener la hora actual en Quito, Ecuador."""
     quito_timezone = timezone(timedelta(hours=-5))
     return datetime.now(quito_timezone)
+
+
+# region Assistant
+
+class AssistantBase(SQLModel):
+    """Base class for Assistant models."""
+    id_number: str = Field(
+        unique=True,
+        index=True,
+        min_length=8,
+        max_length=10,
+
+        title="ID Number",
+        description="Assistant ID number (cédula/pasaporte)"
+    )
+    id_number_type: TypeId = Field(
+        default=TypeId.CEDULA,
+
+        title="ID Number Type",
+        description="Type of the ID (cédula/pasaporte)"
+    )
+    phone: PhoneNumber = Field(
+        title="Phone",
+        description="Assistant phone number (10 digits)"
+    )
+    gender: Gender = Field(
+        title="Gender",
+        description="Assistant gender (Male/Female/Other)"
+    )
+    date_of_birth: date = Field(
+        title="Date of Birth",
+        description="Assistant date of birth"
+    )
+    accepted_terms: bool = Field(
+        title="Accepted Terms",
+        description="Terms acceptance status"
+    )
+
+    @model_validator(mode="after")
+    def validate_id_number(self) -> Self:
+        if self.id_number_type == TypeId.CEDULA:
+            if not is_valid_ecuadorian_id(self.id_number):
+                raise ValueError("Invalid Ecuadorian ID number")
+        elif self.id_number_type == TypeId.PASSPORT:
+            if not is_valid_ecuadorian_passport(self.id_number):
+                raise ValueError("Invalid Ecuadorian passport number")
+        else:
+            raise ValueError("Invalid ID number type")
+
+        return self
+
+
+class Assistant(AssistantBase, table=True):
+    """Assistant database model."""
+    user_id: int | None = Field(
+        default=None,
+        foreign_key="user.id",
+        primary_key=True,
+
+        title="User ID",
+        description="Foreign key to User table"
+    )
+    image_uuid: UUID = Field(
+        unique=True,
+        index=True,
+
+        title="Face Photo",
+        description="UUID of assistant face photo"
+    )
+
+    user: "User" = Relationship(
+        back_populates="assistant"
+    )
+
+    registrations: list["Registration"] = Relationship(
+        back_populates="assistant"
+    )
+
+
+class AssistantPublic(AssistantBase):
+    """Public Assistant model for API responses."""
+    user_id: int = Field(
+        title="User ID",
+        description="Foreign key to User table"
+    )
+    image_uuid: UUID = Field(
+        title="Face Photo",
+        description="UUID of assistant face photo"
+    )
+
+
+class AssistantCreate(AssistantBase):
+    """Assistant create model for API requests."""
+    image: UploadFile = Field(
+        title="Face Photo",
+        description="Assistant face photo"
+    )
+
+
+class AssistantUpdate(SQLModel):
+    """Assistant update model for API requests."""
+    id_number: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=10,
+
+        title="ID Number",
+        description="Assistant ID number"
+    )
+    id_number_type: TypeId | None = Field(
+        default=None,
+
+        title="ID Number Type",
+        description="Type of the ID (cédula/pasaporte)"
+    )
+    phone: PhoneNumber | None = Field(
+        default=None,
+
+        title="Phone",
+        description="Assistant phone number"
+    )
+    gender: Gender | None = Field(
+        default=None,
+
+        title="Gender",
+        description="Assistant gender (Female/Male/Other)"
+    )
+    date_of_birth: date | None = Field(
+        default=None,
+
+        title="Date of Birth",
+        description="Assistant date of birth"
+    )
+    accepted_terms: bool | None = Field(
+        default=None,
+
+        title="Accepted Terms",
+        description="Terms acceptance status"
+    )
+    image: UploadFile | None = Field(
+        default=None,
+
+        title="Face Photo",
+        description="Assistant face photo"
+    )
 
 
 # region User
@@ -75,6 +219,21 @@ class UserBase(SQLModel):
         description="User role (organizer/staff/assistant)",
     )
 
+    @model_validator(mode="after")
+    def validate_email_by_role(self) -> Self:
+        """Validate that if the role is assistant, the email is not from the UDLA domain. (udla.edu.ec) and if the role is organizer or staff, the email is from the UDLA domain."""
+        if self.role == Role.ASSISTANT:
+            if self.email.endswith("udla.edu.ec"):
+                raise ValueError("Assistant email cannot be from UDLA domain")
+        elif self.role in (Role.ORGANIZER, Role.STAFF):
+            if not self.email.endswith("udla.edu.ec"):
+                raise ValueError(
+                    "Organizer/Staff email must be from UDLA domain")
+        else:
+            raise ValueError("Invalid role")
+
+        return self
+
 
 class User(UserBase, table=True):
     """User database model."""
@@ -102,7 +261,7 @@ class User(UserBase, table=True):
         description="Field to determine if the user is active or not",
     )
 
-    assistant: Optional["Assistant"] = Relationship(
+    assistant: Assistant | None = Relationship(
         back_populates="user",
     )
     organized_events: list["Event"] = Relationship(
@@ -128,8 +287,8 @@ class UserPublic(UserBase):
 
 class UserCreate(UserBase):
     """User create model for API requests."""
-    password: str = Field(
-        regex='^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$',
+    password: Password = Field(
+        # regex='^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$',
 
         title="Password",
         description="User password"
@@ -177,166 +336,16 @@ class UserUpdate(SQLModel):
     )
 
 
-# region Assistant
-
-class AssistantBase(SQLModel):
-    """Base class for Assistant models."""
-    id_number: str = Field(
-        unique=True,
-        index=True,
-        min_length=8,
-        max_length=10,
-
-        title="ID Number",
-        description="Assistant ID number (cédula/pasaporte)"
-    )
-    id_number_type: TypeId = Field(
-        default=TypeId.CEDULA,
-
-        title="ID Number Type",
-        description="Type of the ID (cédula/pasaporte)"
-    )
-    phone: str = Field(
-        min_length=10,
-        max_length=10,
-
-        title="Phone",
-        description="Assistant phone number (10 digits)"
-    )
-    gender: Gender = Field(
-        title="Gender",
-        description="Assistant gender (Male/Female/Other)"
-    )
-    date_of_birth: date = Field(
-        title="Date of Birth",
-        description="Assistant date of birth"
-    )
-    accepted_terms: bool = Field(
-        title="Accepted Terms",
-        description="Terms acceptance status"
-    )
-
-
-class Assistant(AssistantBase, table=True):
-    """Assistant database model."""
-    user_id: int | None = Field(
-        default=None,
-        foreign_key="user.id",
-        primary_key=True,
-
-        title="User ID",
-        description="Foreign key to User table"
-    )
-    image_uuid: UUID = Field(
-        unique=True,
-        index=True,
-
-        title="Face Photo",
-        description="UUID of assistant face photo"
-    )
-
-    user: User = Relationship(
-        back_populates="assistant"
-    )
-
-    registrations: list["Registration"] = Relationship(
-        back_populates="assistant"
-    )
-
-
-class AssistantPublic(AssistantBase):
-    """Public Assistant model for API responses."""
-    user_id: int = Field(
-        title="User ID",
-        description="Foreign key to User table"
-    )
-    image_uuid: UUID = Field(
-        title="Face Photo",
-        description="UUID of assistant face photo"
-    )
-
-
-class AssistantCreate(AssistantBase):
-    """Assistant create model for API requests."""
-    image: UploadFile = Field(
-        title="Face Photo",
-        description="Assistant face photo"
-    )
-
-
-class AssistantUpdate(SQLModel):
-    """Assistant update model for API requests."""
-    id_number: str | None = Field(
-        default=None,
-        min_length=8,
-        max_length=10,
-
-        title="ID Number",
-        description="Assistant ID number"
-    )
-    id_number_type: TypeId | None = Field(
-        default=None,
-
-        title="ID Number Type",
-        description="Type of the ID (cédula/pasaporte)"
-    )
-    phone: str | None = Field(
-        default=None,
-        min_length=10,
-        max_length=10,
-
-        title="Phone",
-        description="Assistant phone number"
-    )
-    gender: Gender | None = Field(
-        default=None,
-
-        title="Gender",
-        description="Assistant gender (Female/Male/Other)"
-    )
-    date_of_birth: date | None = Field(
-        default=None,
-
-        title="Date of Birth",
-        description="Assistant date of birth"
-    )
-    accepted_terms: bool | None = Field(
-        default=None,
-
-        title="Accepted Terms",
-        description="Terms acceptance status"
-    )
-    image: UploadFile | None = Field(
-        default=None,
-
-        title="Face Photo",
-        description="Assistant face photo"
-    )
-
-
 class UserAssistantPublic(UserPublic):
     assistant: AssistantPublic
 
 
 class UserAssistantCreate(UserCreate, AssistantCreate):
     def get_user(self) -> UserCreate:
-        return UserCreate(
-            email=self.email,
-            first_name=self.first_name,
-            last_name=self.last_name,
-            password=self.password
-        )
+        return UserCreate.model_validate(self)
 
     def get_assistant(self) -> AssistantCreate:
-        return AssistantCreate(
-            id_number=self.id_number,
-            id_number_type=self.id_number_type,
-            phone=self.phone,
-            gender=self.gender,
-            date_of_birth=self.date_of_birth,
-            accepted_terms=self.accepted_terms,
-            image=self.image,
-        )
+        return AssistantCreate.model_validate(self)
 
 # region Event
 
@@ -363,14 +372,14 @@ class EventBase(SQLModel):
         title="Maps Link",
         description="Event maps link (https://maps.app.goo.gl/)"
     )
-    max_capacity: int | None = Field(
+    max_capacity: PositiveInt | None = Field(
         default=None,
         ge=1,
 
         title="Max Capacity",
         description="Event maximum capacity"
     )
-    venue_capacity: int | None = Field(
+    venue_capacity: PositiveInt | None = Field(
         default=None,
         ge=1,
 
@@ -472,9 +481,9 @@ class EventUpdate(SQLModel):
         default=None, title="Location", description="Event location")
     maps_link: str | None = Field(
         default=None, title="Maps Link", description="Event maps link (https://maps.app.goo.gl/)")
-    max_capacity: int | None = Field(
+    max_capacity: PositiveInt | None = Field(
         default=None, title="Max Capacity", description="Event maximum capacity")
-    venue_capacity: int | None = Field(
+    venue_capacity: PositiveInt | None = Field(
         default=None, title="Venue Capacity", description="Event venue capacity")
     image: str | None = Field(
         default=None, title="Event Image", description="Path to event image")
@@ -798,67 +807,6 @@ def get_current_active_user(
             detail="Inactive user"
         )
     return current_user
-
-
-def is_single_person(image_path: Path) -> bool:
-    """Checks if image contains a single person."""
-    try:
-        face_objs = DeepFace.extract_faces(  # type: ignore
-            img_path=str(image_path),
-            detector_backend="yunet",
-            align=True,
-        )
-    except ValueError as e:
-        if "Face could not be detected" in str(e):
-            return False
-        raise e
-    return len(face_objs) == 1
-
-
-async def save_image(image: UploadFile, folder: str) -> UUID:
-    """Saves image and returns UUID."""
-    image_uuid: UUID = uuid.uuid4()
-    image_path: Path = Path(
-        f"./data/{folder}/{image_uuid.hex}.png"
-    )
-    image_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with image_path.open("wb") as image_file:
-        image_file.write(await image.read())
-
-    return image_uuid
-
-
-async def save_user_image(image: UploadFile, folder: str = "people_imgs") -> UUID:
-    """Saves user image and returns UUID."""
-    # image_uuid: UUID = uuid.uuid4()
-    # image_path: Path = Path(
-    #     f"./data/{folder}/{image_uuid.hex}.png"
-    # )
-    # image_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # with image_path.open("wb") as image_file:
-    #     image_file.write(await image.read())
-
-    # if not is_single_person(image_path):
-    #     if image_path.exists():
-    #         image_path.unlink()
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="The image must contain exactly one person",
-    #     )
-    # return image_uuid
-    image_uuid: UUID = await save_image(image, folder)
-    image_path: Path = Path(f"./data/{folder}/{image_uuid.hex}.png")
-
-    if not is_single_person(image_path):
-        if image_path.exists():
-            image_path.unlink()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The image must contain exactly one person",
-        )
-    return image_uuid
 
 
 # region dependencies

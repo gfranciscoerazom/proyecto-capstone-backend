@@ -3,21 +3,18 @@ This module contains the main application logic, including routing, middleware,
 and the application's lifecycle management. It serves as the entrypoint for
 the API and orchestrates interactions with other modules.
 """
-
-import time
-from typing import Any, Callable
-
-import uvicorn
-from fastapi import FastAPI, Request
-from fastapi.concurrency import asynccontextmanager
-from sqlmodel import Session, select
-
-from api.db.database import User, create_db_and_tables, engine
-from api.models.Role import Role
-from api.models.Tags import tags_metadata
-from api.routers import assistant, events, users
-from api.security.security import get_password_hash
 import pathlib as pl
+from api.security.security import get_password_hash
+from api.routers import assistant, events, users
+from api.models.Tags import tags_metadata
+from api.models.Role import Role
+from api.db.database import User, create_db_and_tables, engine
+from sqlmodel import Session, select
+from fastapi.concurrency import asynccontextmanager
+from fastapi import FastAPI, Request
+import uvicorn
+from typing import Any, Callable
+import time
 
 
 # region FastAPI Configuration
@@ -77,7 +74,7 @@ app = FastAPI(
     contact={
         "name": "Gabriel Erazo",
         "url": "https://github.com/gfranciscoerazom",
-        "email": "gfranciscoerazom@protonmail.com"
+        "email": "gfranciscoerazom@protonmail.com",
     },
     license_info={
         "name": "Apache 2.0",

@@ -13,7 +13,7 @@ from api.db.database import (SessionDependency, User, UserCreate, UserPublic, au
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags
 from api.models.Token import Token
-from api.security.security import create_access_token, get_password_hash, validate_password
+from api.security.security import create_access_token, get_password_hash
 
 router = APIRouter(
     prefix="/users",
@@ -153,7 +153,6 @@ async def add_user(
     Returns:
         UserPublic: The newly created user.
     """
-    validate_password(user.password)
     hashed_password: bytes = get_password_hash(user.password)
     extra_data: dict[str, bytes] = {
         "hashed_password": hashed_password,

@@ -9,11 +9,11 @@ from sqlmodel import select
 
 from api.db.database import (Assistant, AssistantCreate, SessionDependency,
                              User, UserAssistantCreate, UserAssistantPublic,
-                             UserCreate, get_current_active_user,
-                             save_user_image)
+                             UserCreate, get_current_active_user)
+from api.db.validations import save_user_image
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags
-from api.security.security import get_password_hash, validate_password
+from api.security.security import get_password_hash
 
 router = APIRouter(
     prefix="/assistant",
@@ -60,7 +60,7 @@ async def read_users_me(
     summary="Add a new user",
     response_description="Successful Response with the new user",
 )
-async def add_user(
+async def add_assistant(
     user_assistant: Annotated[
         UserAssistantCreate,
 
@@ -93,8 +93,6 @@ async def add_user(
     user: UserCreate = user_assistant.get_user()
     assistant: AssistantCreate = user_assistant.get_assistant()
 
-    validate_password(user.password)
-
     hashed_password: bytes = get_password_hash(user.password)
 
     image_uuid: UUID = await save_user_image(assistant.image)
@@ -109,7 +107,9 @@ async def add_user(
 
     db_user: User = User.model_validate(user, update=extra_data_user)
     db_assistant: Assistant = Assistant.model_validate(
-        assistant, update=extra_data_assistant)
+        assistant,
+        update=extra_data_assistant
+    )
 
     db_user.assistant = db_assistant
 
