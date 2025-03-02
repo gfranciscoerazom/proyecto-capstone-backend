@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Annotated, Final
 
 from fastapi import Depends
-from pydantic import Field
+from pydantic import EmailStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -71,6 +71,16 @@ class Settings(BaseSettings):
             "sqlite:///this/is/an/example.db",
             "postgresql://user:password@localhost/db",
         ],
+    )
+    EMAIL_SENDER: Final[EmailStr] = Field(
+        title="Email Sender",
+        description="Email address of the sender",
+        examples=["email@gmail.com"],
+    )
+    EMAIL_APP_PASSWORD: Final[str] = Field(
+        title="Email App Password",
+        description="App password for the email sender",
+        examples=["xxxx xxxx xxxx xxxx"],
     )
 
     model_config = SettingsConfigDict(

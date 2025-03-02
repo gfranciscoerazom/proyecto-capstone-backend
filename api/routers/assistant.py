@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi.responses import FileResponse
 import sqlalchemy
 from deepface import DeepFace  # type: ignore
-from fastapi import (APIRouter, File, Form, HTTPException, Path, Security,
+from fastapi import (APIRouter, BackgroundTasks, File, Form, HTTPException, Path, Security,
                      UploadFile, status)
 from sqlmodel import select
 
@@ -13,6 +13,7 @@ from api.db.database import (Assistant, AssistantCreate, SessionDependency,
                              User, UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
 from api.db.validations import save_user_image
+from api.helpers.mail import send_new_assistant_email
 from api.models.Role import Role
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags
@@ -74,6 +75,7 @@ async def add_assistant(
         )
     ],
     session: SessionDependency,
+    background_tasks: BackgroundTasks,
 ) -> User:
     """
     Endpoint to add a new assistant.
@@ -134,6 +136,12 @@ async def add_assistant(
         )
 
     session.refresh(db_user)
+
+    background_tasks.add_task(
+        send_new_assistant_email,
+        db_user
+    )
+
     return db_user
 
 
