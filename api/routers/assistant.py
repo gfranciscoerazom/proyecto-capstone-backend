@@ -2,6 +2,8 @@ import pathlib as pl
 from typing import Annotated
 from uuid import UUID
 
+from fastapi.responses import FileResponse
+import sqlalchemy
 from deepface import DeepFace  # type: ignore
 from fastapi import (APIRouter, File, Form, HTTPException, Path, Security,
                      UploadFile, status)
@@ -11,6 +13,7 @@ from api.db.database import (Assistant, AssistantCreate, SessionDependency,
                              User, UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
 from api.db.validations import save_user_image
+from api.models.Role import Role
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags
 from api.security.security import get_password_hash
@@ -97,8 +100,9 @@ async def add_assistant(
 
     image_uuid: UUID = await save_user_image(assistant.image)
 
-    extra_data_user: dict[str, bytes] = {
+    extra_data_user: dict[str, bytes | Role] = {
         "hashed_password": hashed_password,
+        "role": Role.ASSISTANT,
     }
 
     extra_data_assistant: dict[str, UUID] = {
@@ -114,9 +118,22 @@ async def add_assistant(
     db_user.assistant = db_assistant
 
     session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
 
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        image_path: pl.Path = pl.Path(
+            f"./data/people_imgs/{image_uuid}.png"
+        )
+        if image_path.exists():
+            image_path.unlink()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+    session.refresh(db_user)
     return db_user
 
 
@@ -167,7 +184,7 @@ async def get_assistants_by_image(
     temp_image_uuid: UUID = await save_user_image(image, folder="temp_imgs")
     temp_image_path: pl.Path = pl.Path(
         "./data/temp_imgs"
-    ) / f"{temp_image_uuid.hex}.png"
+    ) / f"{temp_image_uuid}.png"
 
     images_df = DeepFace.find(  # type: ignore
         img_path=str(temp_image_path),
@@ -261,3 +278,48 @@ def get_user_by_id_number(
         )
 
     return assistant.user
+
+
+@router.get(
+    "/image/{image_uuid}",
+    response_class=FileResponse,
+
+    summary="Get user image",
+    response_description="Successful Response with the user image",
+)
+def get_user_image(
+    image_uuid: Annotated[
+        UUID,
+        Path(
+            title="Image UUID",
+            description="The UUID of the image to retrieve",
+        )
+    ],
+) -> str:
+    """
+    Endpoint to obtain a user's image.
+
+    This endpoint allows users to retrieve their image by providing the image's UUID.
+
+    \f
+
+    Args:
+        image_uuid (UUID): The UUID of the image to retrieve.
+
+    Returns:
+        FileResponse: The user's image.
+
+    Raises:
+        HTTPException: If the image is not found in the images database.
+    """
+    image_path: pl.Path = pl.Path(
+        f"./data/people_imgs/{image_uuid}.png"
+    )
+
+    if not image_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found",
+        )
+
+    return image_path.as_posix()

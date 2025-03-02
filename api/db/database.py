@@ -11,7 +11,9 @@ from sqlalchemy import Engine
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
-from api.db.validations import Password, PhoneNumber, is_valid_ecuadorian_id, is_valid_ecuadorian_passport
+from api.db.validations import (BeforeTodayDate, Password, PhoneNumber,
+                                TermsAndConditions, is_valid_ecuadorian_id,
+                                is_valid_ecuadorian_passport)
 from api.models.Gender import Gender
 from api.models.Role import Role
 from api.models.Token import TokenData
@@ -54,8 +56,6 @@ class AssistantBase(SQLModel):
         description="Assistant ID number (cédula/pasaporte)"
     )
     id_number_type: TypeId = Field(
-        default=TypeId.CEDULA,
-
         title="ID Number Type",
         description="Type of the ID (cédula/pasaporte)"
     )
@@ -67,11 +67,11 @@ class AssistantBase(SQLModel):
         title="Gender",
         description="Assistant gender (Male/Female/Other)"
     )
-    date_of_birth: date = Field(
+    date_of_birth: BeforeTodayDate = Field(
         title="Date of Birth",
         description="Assistant date of birth"
     )
-    accepted_terms: bool = Field(
+    accepted_terms: TermsAndConditions = Field(
         title="Accepted Terms",
         description="Terms acceptance status"
     )
@@ -165,7 +165,7 @@ class AssistantUpdate(SQLModel):
         title="Gender",
         description="Assistant gender (Female/Male/Other)"
     )
-    date_of_birth: date | None = Field(
+    date_of_birth: BeforeTodayDate | None = Field(
         default=None,
 
         title="Date of Birth",
@@ -212,27 +212,6 @@ class UserBase(SQLModel):
         title="Last Name",
         description="User last name",
     )
-    role: Role = Field(
-        default=Role.ASSISTANT,
-
-        title="Role",
-        description="User role (organizer/staff/assistant)",
-    )
-
-    @model_validator(mode="after")
-    def validate_email_by_role(self) -> Self:
-        """Validate that if the role is assistant, the email is not from the UDLA domain. (udla.edu.ec) and if the role is organizer or staff, the email is from the UDLA domain."""
-        if self.role == Role.ASSISTANT:
-            if self.email.endswith("udla.edu.ec"):
-                raise ValueError("Assistant email cannot be from UDLA domain")
-        elif self.role in (Role.ORGANIZER, Role.STAFF):
-            if not self.email.endswith("udla.edu.ec"):
-                raise ValueError(
-                    "Organizer/Staff email must be from UDLA domain")
-        else:
-            raise ValueError("Invalid role")
-
-        return self
 
 
 class User(UserBase, table=True):
@@ -260,6 +239,10 @@ class User(UserBase, table=True):
         title="Flag for active status",
         description="Field to determine if the user is active or not",
     )
+    role: Role = Field(
+        title="Role",
+        description="User role (organizer/staff/assistant)",
+    )
 
     assistant: Assistant | None = Relationship(
         back_populates="user",
@@ -267,6 +250,21 @@ class User(UserBase, table=True):
     organized_events: list["Event"] = Relationship(
         back_populates="organizer",
     )
+
+    @model_validator(mode="after")
+    def validate_email_by_role(self) -> Self:
+        """Validate that if the role is assistant, the email is not from the UDLA domain. (udla.edu.ec) and if the role is organizer or staff, the email is from the UDLA domain."""
+        if self.role == Role.ASSISTANT:
+            if self.email.endswith("udla.edu.ec"):
+                raise ValueError("Assistant email cannot be from UDLA domain")
+        elif self.role in (Role.ORGANIZER, Role.STAFF):
+            if not self.email.endswith("udla.edu.ec"):
+                raise ValueError(
+                    "Organizer/Staff email must be from UDLA domain")
+        else:
+            raise ValueError("Invalid role")
+
+        return self
 
 
 class UserPublic(UserBase):
@@ -288,8 +286,6 @@ class UserPublic(UserBase):
 class UserCreate(UserBase):
     """User create model for API requests."""
     password: Password = Field(
-        # regex='^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$',
-
         title="Password",
         description="User password"
     )
@@ -557,6 +553,10 @@ class EventDateUpdate(SQLModel):
         default=None, title="End Time", description="Event end time")
     event_id: int | None = Field(
         default=None, title="Event ID", description="Event ID")
+    event_name: str | None = Field(
+        default=None, title="Event Name", description="Name of the event")
+    location: str | None = Field(
+        default=None, title="Location", description="Event location")
 
 
 # region Registration

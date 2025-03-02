@@ -1,11 +1,11 @@
-from deepface import DeepFace  # type: ignore
-from datetime import datetime
-from pathlib import Path
 import re
+import uuid
+from datetime import date, datetime
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
-import uuid
 
+from deepface import DeepFace  # type: ignore
 from fastapi import HTTPException, UploadFile, status
 from pydantic import AfterValidator
 
@@ -92,7 +92,7 @@ async def save_image(image: UploadFile, folder: str) -> UUID:
     """Saves image and returns UUID."""
     image_uuid: UUID = uuid.uuid4()
     image_path: Path = Path(
-        f"./data/{folder}/{image_uuid.hex}.png"
+        f"./data/{folder}/{image_uuid}.png"
     )
     image_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -105,7 +105,7 @@ async def save_image(image: UploadFile, folder: str) -> UUID:
 async def save_user_image(image: UploadFile, folder: str = "people_imgs") -> UUID:
     """Saves user image and returns UUID."""
     image_uuid: UUID = await save_image(image, folder)
-    image_path: Path = Path(f"./data/{folder}/{image_uuid.hex}.png")
+    image_path: Path = Path(f"./data/{folder}/{image_uuid}.png")
 
     if not is_single_person(image_path):
         if image_path.exists():
@@ -117,21 +117,52 @@ async def save_user_image(image: UploadFile, folder: str = "people_imgs") -> UUI
     return image_uuid
 
 
+def is_before_today(date: date) -> date:
+    if date > datetime.now().date():
+        raise ValueError("Date must be before today.")
+    return date
+
+
+def is_after_today(date: date) -> date:
+    if date < datetime.now().date():
+        raise ValueError("Date must be after today.")
+    return date
+
+
+def is_valid_phone_number(phone_number: str) -> str:
+    if not (len(phone_number) == 10 and phone_number.isdigit()):
+        raise ValueError("Phone number must have 10 digits.")
+    return phone_number
+
+
+def is_accepted_terms(accepted_terms: bool) -> bool:
+    if not accepted_terms:
+        raise ValueError("You must accept the terms and conditions.")
+    return accepted_terms
+
+
 Password = Annotated[
     str,
     AfterValidator(password_validator)
 ]
 
 BeforeTodayDate = Annotated[
-    str,
-    AfterValidator(
-        lambda date: date < str(datetime.now().date())
-    )
+    date,
+    AfterValidator(is_before_today)
+]
+
+AfterTodayDate = Annotated[
+    date,
+    AfterValidator(is_after_today)
 ]
 
 PhoneNumber = Annotated[
     str,
-    AfterValidator(
-        lambda phone_number: len(phone_number) == 10 and phone_number.isdigit()
-    )
+    AfterValidator(is_valid_phone_number)
+]
+
+
+TermsAndConditions = Annotated[
+    bool,
+    AfterValidator(is_accepted_terms)
 ]

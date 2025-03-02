@@ -4,7 +4,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Form, HTTPException, Security, status
 
-from api.db.database import Event, EventCreate, EventPublic, SessionDependency, get_current_active_user
+from api.db.database import (Event, EventCreate, EventPublic,
+                             SessionDependency, get_current_active_user)
 from api.db.validations import save_image
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags

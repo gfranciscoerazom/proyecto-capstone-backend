@@ -8,8 +8,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Form, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from api.db.database import (SessionDependency, User, UserCreate, UserPublic, authenticate_user,
-                             get_current_active_user)
+from api.db.database import (SessionDependency, User, UserCreate, UserPublic,
+                             authenticate_user, get_current_active_user)
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags
 from api.models.Token import Token

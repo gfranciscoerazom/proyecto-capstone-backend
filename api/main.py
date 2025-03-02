@@ -4,20 +4,23 @@ and the application's lifecycle management. It serves as the entrypoint for
 the API and orchestrates interactions with other modules.
 """
 import pathlib as pl
-from api.security.security import get_password_hash
-from api.routers import assistant, events, users
-from api.models.Tags import tags_metadata
-from api.models.Role import Role
-from api.db.database import User, create_db_and_tables, engine
-from sqlmodel import Session, select
-from fastapi.concurrency import asynccontextmanager
-from fastapi import FastAPI, Request
-import uvicorn
-from typing import Any, Callable
 import time
+from typing import Any, Callable
 
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.concurrency import asynccontextmanager
+from sqlmodel import Session, select
+
+from api.db.database import User, create_db_and_tables, engine
+from api.models.Role import Role
+from api.models.Tags import tags_metadata
+from api.routers import assistant, events, users
+from api.security.security import get_password_hash
 
 # region FastAPI Configuration
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -69,7 +72,48 @@ app = FastAPI(
     title="Proyecto CAPSTONE - Backend",
     summary="This is the backend for the Proyecto CAPSTONE project. \
     It provides the API for the project's frontend.",
-    description="TODO",
+    description="""
+# Proyecto CAPSTONE - Backend
+
+This is the backend for the Proyecto CAPSTONE project.
+
+It provides the API for the project's frontend.
+
+This project has the objective of making a platform for the Marketing department, specifically for
+free events that are hosted by Universidad de las Americas with the objective of obtaining new candidate
+
+## Authors
+
+This project was developed by:
+* Doménica Escobar
+* Gabriel Erazo
+
+Tutored by:
+* Edwin Garcia
+
+## Useful links
+
+* [Documentation in Swagger UI](http://127.0.0.1:8000/docs)
+* [Documentation in ReDoc](http://127.0.0.1:8000/redoc)
+
+```
+ _______ __                              __                                           __ __         
+|    ___|  |    .--------.--.--.-----.--|  |.-----.    .-----.-----.----.-----.-----.|__|  |_.---.-.
+|    ___|  |    |        |  |  |     |  _  ||  _  |    |     |  -__|  __|  -__|__ --||  |   _|  _  |
+|_______|__|    |__|__|__|_____|__|__|_____||_____|    |__|__|_____|____|_____|_____||__|____|___._|
+                                                                                                    
+                    __                                                                              
+.-----.-----.-----.|  |_.-----.    .-----.--.--.-----.    .---.-.--------.-----.                    
+|  _  |  -__|     ||   _|  -__|    |  _  |  |  |  -__|    |  _  |        |  -__|                    
+|___  |_____|__|__||____|_____|    |__   |_____|_____|    |___._|__|__|__|_____|                    
+|_____|                               |__|                                                          
+ __                                    __                                                           
+|  |.-----.    .-----.--.--.-----.    |  |--.---.-.----.-----.                                      
+|  ||  _  |    |  _  |  |  |  -__|    |     |  _  |  __|  -__|                                      
+|__||_____|    |__   |_____|_____|    |__|__|___._|____|_____|                                      
+                  |__|                                                                              
+```
+""",
     version="0.0.1",
     contact={
         "name": "Gabriel Erazo",
