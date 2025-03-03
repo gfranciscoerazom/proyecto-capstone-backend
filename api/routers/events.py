@@ -4,6 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Form, HTTPException, Path, Security, status
 import sqlalchemy
+from fastapi.responses import FileResponse
 
 from api.db.database import (Event, EventCreate, EventPublic,
                              SessionDependency, get_current_active_user)
@@ -140,4 +141,49 @@ async def get_event_by_id(
         )
 
     return event
+
+
+@router.get(
+    "/image/{image_uuid}",
+    response_class=FileResponse,
+
+    summary="Get event image",
+    response_description="Successful Response with the event image",
+)
+def get_event_image(
+    image_uuid: Annotated[
+        UUID,
+        Path(
+            title="Image UUID",
+            description="The UUID of the event image to retrieve",
+        )
+    ],
+) -> str:
+    """
+    Endpoint to obtain an event's image.
+
+    This endpoint allows users to retrieve an event's image by providing the image's UUID.
+
+    \f
+
+    Args:
+        image_uuid (UUID): The UUID of the event image to retrieve.
+
+    Returns:
+        FileResponse: The event's image.
+
+    Raises:
+        HTTPException: If the image is not found in the images database.
+    """
+    image_path: pl.Path = pl.Path(
+        f"./data/events_imgs/{image_uuid}.png"
+    )
+
+    if not image_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found",
+        )
+
+    return image_path.as_posix()
 # endregion
