@@ -14,7 +14,6 @@ class Role(StrEnum):
     Represents the different roles that can be assigned to a user in the API.
     """
     ASSISTANT = auto()
-    ADMIN = auto()
     STAFF = auto()
     ORGANIZER = auto()
 
@@ -27,7 +26,6 @@ class Role(StrEnum):
         """
         role_scopes: dict[Role, set[Scopes]] = {
             Role.ASSISTANT: {Scopes.USER, Scopes.ASSISTANT},
-            Role.ADMIN: {Scopes.USER, Scopes.ASSISTANT, Scopes.ORGANIZER},
             Role.STAFF: {Scopes.USER, Scopes.STAFF},
             Role.ORGANIZER: {Scopes.USER, Scopes.ORGANIZER}
         }

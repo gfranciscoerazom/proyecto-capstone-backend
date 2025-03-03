@@ -1,8 +1,9 @@
-from pathlib import Path
+import pathlib as pl
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Form, HTTPException, Security, status
+from fastapi import APIRouter, Form, HTTPException, Path, Security, status
+import sqlalchemy
 
 from api.db.database import (Event, EventCreate, EventPublic,
                              SessionDependency, get_current_active_user)
@@ -21,12 +22,12 @@ router = APIRouter(
 @router.post(
     "/add",
     response_model=EventPublic,
-    dependencies=[
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.ORGANIZER]
-        )
-    ],
+    # dependencies=[
+    #     Security(
+    #         get_current_active_user,
+    #         scopes=[Scopes.ORGANIZER]
+    #     )
+    # ],
 
     summary="Add an event",
     response_description="The added event",
@@ -37,6 +38,7 @@ async def add_event(
         Form(
             title="Event information",
             description="The information of the event to add to the database.",
+            media_type="multipart/form-data",
         )
     ],
     session: SessionDependency,
@@ -55,23 +57,42 @@ async def add_event(
     Returns:
     - Event: The added event.
     """
-    if bool(event.max_capacity) ^ bool(event.venue_capacity):
+    if not bool(event.max_capacity) ^ bool(event.venue_capacity):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Either max_capacity or venue_capacity should be provided, not both.",
         )
 
     event_image_uuid: UUID = await save_image(image=event.image, folder="events_imgs")
-    new_event: Event = Event.model_validate(event)
-    new_event.image_uuid = event_image_uuid
+
+    extra_data_event: dict[str, UUID] = {
+        "image_uuid": event_image_uuid,
+    }
+
+    new_event: Event = Event.model_validate(event, update=extra_data_event)
+
     session.add(new_event)
-    session.commit()
+
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        image_path: pl.Path = pl.Path(
+            f"./data/events_imgs/{event_image_uuid}.png"
+        )
+        if image_path.exists():
+            image_path.unlink()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
     session.refresh(new_event)
     return new_event
 
 
 @router.get(
-    "/",
+    "/{event_id}",
     response_model=EventPublic,
     dependencies=[
         Security(

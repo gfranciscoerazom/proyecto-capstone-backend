@@ -6,7 +6,7 @@ import jwt
 from deepface import DeepFace  # type: ignore
 from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.security import SecurityScopes
-from pydantic import EmailStr, PositiveInt, ValidationError, model_validator
+from pydantic import EmailStr, ValidationError, model_validator
 from sqlalchemy import Engine
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
@@ -368,14 +368,14 @@ class EventBase(SQLModel):
         title="Maps Link",
         description="Event maps link (https://maps.app.goo.gl/)"
     )
-    max_capacity: PositiveInt | None = Field(
+    max_capacity: int | None = Field(
         default=None,
         ge=1,
 
         title="Max Capacity",
         description="Event maximum capacity"
     )
-    venue_capacity: PositiveInt | None = Field(
+    venue_capacity: int | None = Field(
         default=None,
         ge=1,
 
@@ -477,9 +477,9 @@ class EventUpdate(SQLModel):
         default=None, title="Location", description="Event location")
     maps_link: str | None = Field(
         default=None, title="Maps Link", description="Event maps link (https://maps.app.goo.gl/)")
-    max_capacity: PositiveInt | None = Field(
+    max_capacity: int | None = Field(
         default=None, title="Max Capacity", description="Event maximum capacity")
-    venue_capacity: PositiveInt | None = Field(
+    venue_capacity: int | None = Field(
         default=None, title="Venue Capacity", description="Event venue capacity")
     image: str | None = Field(
         default=None, title="Event Image", description="Path to event image")
