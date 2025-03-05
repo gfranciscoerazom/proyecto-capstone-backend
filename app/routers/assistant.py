@@ -9,15 +9,15 @@ from fastapi import (APIRouter, BackgroundTasks, File, Form, HTTPException,
 from fastapi.responses import FileResponse
 from sqlmodel import select
 
-from api.db.database import (Assistant, AssistantCreate, SessionDependency,
+from app.db.database import (Assistant, AssistantCreate, SessionDependency,
                              User, UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
-from api.db.validations import save_user_image
-from api.helpers.mail import send_new_assistant_email
-from api.models.Role import Role
-from api.models.Scopes import Scopes
-from api.models.Tags import Tags
-from api.security.security import get_password_hash
+from app.db.validations import save_user_image
+from app.helpers.mail import send_new_assistant_email
+from app.models.Role import Role
+from app.models.Scopes import Scopes
+from app.models.Tags import Tags
+from app.security.security import get_password_hash
 
 router = APIRouter(
     prefix="/assistant",

@@ -13,13 +13,13 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.concurrency import asynccontextmanager
 from sqlmodel import Session, select
 
-from api.db.database import User, authenticate_user, create_db_and_tables, engine
-from api.models.Role import Role
-from api.models.Scopes import Scopes
-from api.models.Tags import tags_metadata
-from api.models.Token import Token
-from api.routers import assistant, events, organizer, staff
-from api.security.security import create_access_token, get_password_hash
+from app.db.database import User, authenticate_user, create_db_and_tables, engine
+from app.models.Role import Role
+from app.models.Scopes import Scopes
+from app.models.Tags import tags_metadata
+from app.models.Token import Token
+from app.routers import assistant, events, organizer, staff
+from app.security.security import create_access_token, get_password_hash
 
 # region FastAPI Configuration
 

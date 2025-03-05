@@ -2,8 +2,8 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 
-from api.db.database import User
-from api.settings.config import settings
+from app.db.database import User
+from app.settings.config import settings
 
 
 def send_new_assistant_email(

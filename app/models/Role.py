@@ -4,7 +4,7 @@ Defines roles for the API.
 
 from enum import StrEnum, auto
 
-from api.models.Scopes import Scopes
+from app.models.Scopes import Scopes
 
 
 class Role(StrEnum):

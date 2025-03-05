@@ -7,19 +7,51 @@ from typing import Annotated
 
 from fastapi import APIRouter, Form, Security
 
-from api.db.database import (SessionDependency, User, UserCreate, UserPublic,
+from app.db.database import (SessionDependency, User, UserCreate, UserPublic,
                              get_current_active_user)
-from api.models.Role import Role
-from api.models.Scopes import Scopes
-from api.models.Tags import Tags
-from api.security.security import get_password_hash
+from app.models.Role import Role
+from app.models.Scopes import Scopes
+from app.models.Tags import Tags
+from app.security.security import get_password_hash
 
 router = APIRouter(
-    prefix="/staff",
-    tags=[Tags.staff],
+    prefix="/organizer",
+    tags=[Tags.organizer],
 )
 
 # region Endpoints
+
+
+@router.get(
+    "/info",
+    response_model=UserPublic,
+
+    summary="Get current user",
+    response_description="Successful Response with the current user",
+)
+async def read_users_me(
+    current_user: Annotated[
+        User,
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.USER]
+        )
+    ],
+) -> User:
+    """
+    Retrieve the current authenticated user.
+
+    This endpoint returns the details of the currently authenticated user.
+
+    \f
+
+    Args:
+        current_user (User): The current active user, obtained from the dependency injection.
+
+    Returns:
+        UserPublic: The current authenticated user.
+    """
+    return current_user
 
 
 @router.post(
@@ -31,7 +63,7 @@ router = APIRouter(
             scopes=[Scopes.ORGANIZER],
         )
     ],
-    summary="Add a new user of type staff",
+    summary="Add a new user of type organizer",
     response_description="Successful Response with the new user",
 )
 async def add_user(
@@ -61,7 +93,7 @@ async def add_user(
     hashed_password: bytes = get_password_hash(user.password)
     extra_data: dict[str, bytes | Role] = {
         "hashed_password": hashed_password,
-        "role": Role.STAFF,
+        "role": Role.ORGANIZER,
     }
     db_user: User = User.model_validate(user, update=extra_data)
     session.add(db_user)

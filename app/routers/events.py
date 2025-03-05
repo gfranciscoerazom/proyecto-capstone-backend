@@ -7,11 +7,11 @@ from fastapi import APIRouter, Form, HTTPException, Path, Security, status
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
 
-from api.db.database import (Event, EventCreate, EventPublic,
+from app.db.database import (Event, EventCreate, EventPublic,
                              SessionDependency, User, get_current_active_user)
-from api.db.validations import save_image
-from api.models.Scopes import Scopes
-from api.models.Tags import Tags
+from app.db.validations import save_image
+from app.models.Scopes import Scopes
+from app.models.Tags import Tags
 
 router = APIRouter(
     prefix="/events",

@@ -9,8 +9,8 @@ import bcrypt
 import jwt
 from fastapi.security import OAuth2PasswordBearer
 
-from api.models.Scopes import scopes
-from api.settings.config import settings
+from app.models.Scopes import scopes
+from app.settings.config import settings
 
 # region variables
 oauth2_scheme = OAuth2PasswordBearer(

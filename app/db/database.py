@@ -11,16 +11,16 @@ from sqlalchemy import Engine
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
-from api.db.validations import (BeforeTodayDate, GoogleMapsURL, Password,
+from app.db.validations import (BeforeTodayDate, GoogleMapsURL, Password,
                                 PhoneNumber, TermsAndConditions,
                                 is_valid_ecuadorian_id,
                                 is_valid_ecuadorian_passport)
-from api.models.Gender import Gender
-from api.models.Role import Role
-from api.models.Token import TokenData
-from api.models.TypeId import TypeId
-from api.security.security import oauth2_scheme, verify_password
-from api.settings.config import settings
+from app.models.Gender import Gender
+from app.models.Role import Role
+from app.models.Token import TokenData
+from app.models.TypeId import TypeId
+from app.security.security import oauth2_scheme, verify_password
+from app.settings.config import settings
 
 # region settings
 connect_args = {"check_same_thread": False}
