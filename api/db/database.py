@@ -3,15 +3,14 @@ from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
 import jwt
-from deepface import DeepFace  # type: ignore
 from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.security import SecurityScopes
-from pydantic import EmailStr, ValidationError, model_validator
+from pydantic import EmailStr, PositiveInt, ValidationError, field_validator, model_validator
 from sqlalchemy import Engine
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
-from api.db.validations import (BeforeTodayDate, Password, PhoneNumber,
+from api.db.validations import (BeforeTodayDate, GoogleMapsURL, Password, PhoneNumber,
                                 TermsAndConditions, is_valid_ecuadorian_id,
                                 is_valid_ecuadorian_passport)
 from api.models.Gender import Gender
@@ -78,15 +77,15 @@ class AssistantBase(SQLModel):
 
     @model_validator(mode="after")
     def validate_id_number(self) -> Self:
-        if self.id_number_type == TypeId.CEDULA:
-            if not is_valid_ecuadorian_id(self.id_number):
-                raise ValueError("Invalid Ecuadorian ID number")
-        elif self.id_number_type == TypeId.PASSPORT:
-            if not is_valid_ecuadorian_passport(self.id_number):
-                raise ValueError("Invalid Ecuadorian passport number")
-        else:
-            raise ValueError("Invalid ID number type")
-
+        match self.id_number_type:
+            case TypeId.CEDULA:
+                if not is_valid_ecuadorian_id(self.id_number):
+                    raise ValueError("Invalid Ecuadorian ID number")
+            case TypeId.PASSPORT:
+                if not is_valid_ecuadorian_passport(self.id_number):
+                    raise ValueError("Invalid Ecuadorian passport number")
+            case _:
+                raise ValueError("Invalid ID number type")
         return self
 
 
@@ -254,15 +253,17 @@ class User(UserBase, table=True):
     @model_validator(mode="after")
     def validate_email_by_role(self) -> Self:
         """Validate that if the role is assistant, the email is not from the UDLA domain. (udla.edu.ec) and if the role is organizer or staff, the email is from the UDLA domain."""
-        if self.role == Role.ASSISTANT:
-            if self.email.endswith("udla.edu.ec"):
-                raise ValueError("Assistant email cannot be from UDLA domain")
-        elif self.role in (Role.ORGANIZER, Role.STAFF):
-            if not self.email.endswith("udla.edu.ec"):
-                raise ValueError(
-                    "Organizer/Staff email must be from UDLA domain")
-        else:
-            raise ValueError("Invalid role")
+        match self.role:
+            case Role.ASSISTANT:
+                if self.email.endswith("udla.edu.ec"):
+                    raise ValueError(
+                        "Assistant email cannot be from UDLA domain")
+            case Role.ORGANIZER | Role.STAFF:
+                if not self.email.endswith("udla.edu.ec"):
+                    raise ValueError(
+                        "Organizer or staff email must be from UDLA domain")
+            case _:
+                raise ValueError("Invalid role")
 
         return self
 
@@ -362,32 +363,33 @@ class EventBase(SQLModel):
         title="Location",
         description="Event location"
     )
-    maps_link: str = Field(
-        regex="^https://maps\\.app\\.goo\\.gl/.*$",
-
+    maps_link: GoogleMapsURL = Field(
         title="Maps Link",
         description="Event maps link (https://maps.app.goo.gl/)"
     )
-    max_capacity: int | None = Field(
+    max_capacity: PositiveInt | None = Field(
         default=None,
         ge=1,
 
         title="Max Capacity",
         description="Event maximum capacity"
     )
-    venue_capacity: int | None = Field(
+    venue_capacity: PositiveInt | None = Field(
         default=None,
         ge=1,
 
         title="Venue Capacity",
         description="Event venue capacity"
     )
-    organizer_id: int = Field(
-        foreign_key="user.id",
 
-        title="Organizer ID",
-        description="Foreign key to User table (organizer)"
-    )
+    @model_validator(mode="after")
+    def validate_capacity(self) -> Self:
+        if not bool(self.max_capacity) ^ bool(self.venue_capacity):
+            raise ValueError(
+                "Either max_capacity or venue_capacity should be provided, not both."
+            )
+
+        return self
 
 
 class Event(EventBase, table=True):
@@ -423,6 +425,31 @@ class Event(EventBase, table=True):
         title="Is Published",
         description="Event published status"
     )
+    organizer_id: int = Field(
+        foreign_key="user.id",
+
+        title="Organizer ID",
+        description="Foreign key to User table (organizer)"
+    )
+
+    @field_validator("organizer_id", mode="after")
+    @classmethod
+    def is_valid_organizer_id(cls, organizer_id: int) -> int:
+        if organizer_id < 1:
+            raise ValueError("Organizer ID must be greater than 0.")
+
+        with Session(engine) as session:
+            if not (
+                user := session.exec(
+                    select(User).where(User.id == organizer_id)
+                ).first()
+            ):
+                raise ValueError("Organizer not found.")
+
+            if user.role != Role.ORGANIZER:
+                raise ValueError("User is not an organizer.")
+
+        return organizer_id
 
     organizer: User = Relationship(
         back_populates="organized_events"
@@ -457,6 +484,10 @@ class EventPublic(EventBase):
         title="Event Image",
         description="Path to event image"
     )
+    organizer_id: int = Field(
+        title="Organizer ID",
+        description="Organizer User ID"
+    )
 
 
 class EventCreate(EventBase):
@@ -475,7 +506,7 @@ class EventUpdate(SQLModel):
         default=None, title="Description", description="Event description")
     location: str | None = Field(
         default=None, title="Location", description="Event location")
-    maps_link: str | None = Field(
+    maps_link: GoogleMapsURL | None = Field(
         default=None, title="Maps Link", description="Event maps link (https://maps.app.goo.gl/)")
     max_capacity: int | None = Field(
         default=None, title="Max Capacity", description="Event maximum capacity")

@@ -141,6 +141,12 @@ def is_accepted_terms(accepted_terms: bool) -> bool:
     return accepted_terms
 
 
+def is_valid_google_maps_url(url: str) -> str:
+    if not url.startswith("https://maps.app.goo.gl/"):
+        raise ValueError("URL must be a valid Google Maps URL.")
+    return url
+
+
 Password = Annotated[
     str,
     AfterValidator(password_validator)
@@ -165,4 +171,10 @@ PhoneNumber = Annotated[
 TermsAndConditions = Annotated[
     bool,
     AfterValidator(is_accepted_terms)
+]
+
+
+GoogleMapsURL = Annotated[
+    str,
+    AfterValidator(is_valid_google_maps_url)
 ]

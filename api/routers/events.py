@@ -1,13 +1,14 @@
 import pathlib as pl
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Form, HTTPException, Path, Security, status
+from pydantic import PositiveInt
 import sqlalchemy
 from fastapi.responses import FileResponse
 
 from api.db.database import (Event, EventCreate, EventPublic,
-                             SessionDependency, get_current_active_user)
+                             SessionDependency, User, get_current_active_user)
 from api.db.validations import save_image
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags
@@ -23,12 +24,6 @@ router = APIRouter(
 @router.post(
     "/add",
     response_model=EventPublic,
-    # dependencies=[
-    #     Security(
-    #         get_current_active_user,
-    #         scopes=[Scopes.ORGANIZER]
-    #     )
-    # ],
 
     summary="Add an event",
     response_description="The added event",
@@ -43,6 +38,7 @@ async def add_event(
         )
     ],
     session: SessionDependency,
+    current_user: Annotated[User, Security(get_current_active_user, scopes=[Scopes.ORGANIZER])],
 ) -> Event:
     """
     Add an event to the database.
@@ -58,16 +54,11 @@ async def add_event(
     Returns:
     - Event: The added event.
     """
-    if not bool(event.max_capacity) ^ bool(event.venue_capacity):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Either max_capacity or venue_capacity should be provided, not both.",
-        )
-
     event_image_uuid: UUID = await save_image(image=event.image, folder="events_imgs")
 
-    extra_data_event: dict[str, UUID] = {
+    extra_data_event: dict[str, Any] = {
         "image_uuid": event_image_uuid,
+        "organizer_id": current_user.id,
     }
 
     new_event: Event = Event.model_validate(event, update=extra_data_event)
@@ -107,7 +98,7 @@ async def add_event(
 )
 async def get_event_by_id(
     event_id: Annotated[
-        int,
+        PositiveInt,
         Path(
             ge=1,
 
