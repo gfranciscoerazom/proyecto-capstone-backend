@@ -5,84 +5,21 @@ including authentication, registration, and user information retrieval.
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Security, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Form, Security
 
 from api.db.database import (SessionDependency, User, UserCreate, UserPublic,
-                             authenticate_user, get_current_active_user)
+                             get_current_active_user)
+from api.models.Role import Role
 from api.models.Scopes import Scopes
 from api.models.Tags import Tags
-from api.models.Token import Token
-from api.security.security import create_access_token, get_password_hash
+from api.security.security import get_password_hash
 
 router = APIRouter(
-    prefix="/users",
-    tags=[Tags.users],
+    prefix="/organizer",
+    tags=[Tags.organizer],
 )
 
 # region Endpoints
-
-
-@router.post(
-    "/token",
-
-    summary="Get an access token",
-    response_description="Successful Response with the access token",
-)
-async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-) -> Token:
-    """
-    Endpoint to obtain an access token.
-
-    This endpoint allows users to obtain an access token by providing their
-    username and password. The token can then be used to authenticate subsequent
-    requests.
-
-    \f
-
-    Args:
-        form_data (OAuth2PasswordRequestForm): The form data containing the
-            username and password.
-
-    Returns:
-        Token: An object containing the access token and token type.
-
-    Raises:
-        HTTPException: If the username or password is incorrect, an HTTP 401
-            Unauthorized error is raised.
-    """
-    if not (
-        user := authenticate_user(
-            email=form_data.username,
-            password=form_data.password
-        )
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    allowed_scopes: set[Scopes] = user.role.get_allowed_scopes()
-
-    if not all(scope in allowed_scopes for scope in form_data.scopes):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not enough permissions",
-            headers={
-                "WWW-Authenticate": f'Bearer scope="{", ".join(scope.value for scope in allowed_scopes)}"'
-            },
-        )
-
-    access_token: str = create_access_token(
-        data={
-            "sub": user.email,
-            "scopes": form_data.scopes,
-        }
-    )
-
-    return Token(access_token=access_token)
 
 
 @router.get(
@@ -126,7 +63,7 @@ async def read_users_me(
             scopes=[Scopes.ORGANIZER],
         )
     ],
-    summary="Add a new user of type organizer or staff",
+    summary="Add a new user of type organizer",
     response_description="Successful Response with the new user",
 )
 async def add_user(
@@ -154,8 +91,9 @@ async def add_user(
         UserPublic: The newly created user.
     """
     hashed_password: bytes = get_password_hash(user.password)
-    extra_data: dict[str, bytes] = {
+    extra_data: dict[str, bytes | Role] = {
         "hashed_password": hashed_password,
+        "role": Role.ORGANIZER,
     }
     db_user: User = User.model_validate(user, update=extra_data)
     session.add(db_user)

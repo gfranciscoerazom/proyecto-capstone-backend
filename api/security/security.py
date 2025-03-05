@@ -14,7 +14,7 @@ from api.settings.config import settings
 
 # region variables
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/users/token",
+    tokenUrl="/token",
     scopes=scopes,  # type: ignore
 )
 # endregion

@@ -2,11 +2,11 @@ import pathlib as pl
 from typing import Annotated
 from uuid import UUID
 
-from fastapi.responses import FileResponse
 import sqlalchemy
 from deepface import DeepFace  # type: ignore
-from fastapi import (APIRouter, BackgroundTasks, File, Form, HTTPException, Path, Security,
-                     UploadFile, status)
+from fastapi import (APIRouter, BackgroundTasks, File, Form, HTTPException,
+                     Path, Security, UploadFile, status)
+from fastapi.responses import FileResponse
 from sqlmodel import select
 
 from api.db.database import (Assistant, AssistantCreate, SessionDependency,

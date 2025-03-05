@@ -1,6 +1,6 @@
-from email.message import EmailMessage
 import smtplib
 import ssl
+from email.message import EmailMessage
 
 from api.db.database import User
 from api.settings.config import settings

@@ -5,18 +5,21 @@ the API and orchestrates interactions with other modules.
 """
 import pathlib as pl
 import time
-from typing import Any, Callable
+from typing import Annotated, Any, Callable
 
+from fastapi.security import OAuth2PasswordRequestForm
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.concurrency import asynccontextmanager
 from sqlmodel import Session, select
 
-from api.db.database import User, create_db_and_tables, engine
+from api.db.database import User, authenticate_user, create_db_and_tables, engine
 from api.models.Role import Role
+from api.models.Scopes import Scopes
 from api.models.Tags import tags_metadata
-from api.routers import assistant, events, users
-from api.security.security import get_password_hash
+from api.models.Token import Token
+from api.routers import assistant, events, organizer, staff
+from api.security.security import create_access_token, get_password_hash
 
 # region FastAPI Configuration
 
@@ -132,10 +135,73 @@ Tutored by:
 
 
 # region Routers
-app.include_router(users.router)
+app.include_router(organizer.router)
+app.include_router(staff.router)
 app.include_router(assistant.router)
 app.include_router(events.router)
 # endregion
+
+
+@app.post(
+    "/token",
+
+    summary="Get an access token",
+    response_description="Successful Response with the access token",
+)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+) -> Token:
+    """
+    Endpoint to obtain an access token.
+
+    This endpoint allows users to obtain an access token by providing their
+    username and password. The token can then be used to authenticate subsequent
+    requests.
+
+    \f
+
+    Args:
+        form_data (OAuth2PasswordRequestForm): The form data containing the
+            username and password.
+
+    Returns:
+        Token: An object containing the access token and token type.
+
+    Raises:
+        HTTPException: If the username or password is incorrect, an HTTP 401
+            Unauthorized error is raised.
+    """
+    if not (
+        user := authenticate_user(
+            email=form_data.username,
+            password=form_data.password
+        )
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    allowed_scopes: set[Scopes] = user.role.get_allowed_scopes()
+
+    if not all(scope in allowed_scopes for scope in form_data.scopes):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not enough permissions",
+            headers={
+                "WWW-Authenticate": f'Bearer scope="{", ".join(scope.value for scope in allowed_scopes)}"'
+            },
+        )
+
+    access_token: str = create_access_token(
+        data={
+            "sub": user.email,
+            "scopes": form_data.scopes,
+        }
+    )
+
+    return Token(access_token=access_token)
 
 
 @app.get("/")

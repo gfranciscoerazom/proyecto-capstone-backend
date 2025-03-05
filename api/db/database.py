@@ -5,13 +5,15 @@ from uuid import UUID
 import jwt
 from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.security import SecurityScopes
-from pydantic import EmailStr, PositiveInt, ValidationError, field_validator, model_validator
+from pydantic import (EmailStr, PositiveInt, ValidationError, field_validator,
+                      model_validator)
 from sqlalchemy import Engine
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
-from api.db.validations import (BeforeTodayDate, GoogleMapsURL, Password, PhoneNumber,
-                                TermsAndConditions, is_valid_ecuadorian_id,
+from api.db.validations import (BeforeTodayDate, GoogleMapsURL, Password,
+                                PhoneNumber, TermsAndConditions,
+                                is_valid_ecuadorian_id,
                                 is_valid_ecuadorian_passport)
 from api.models.Gender import Gender
 from api.models.Role import Role
@@ -281,6 +283,10 @@ class UserPublic(UserBase):
     is_active: bool = Field(
         title="Flag for active status",
         description="Field to determine if the user is active or not",
+    )
+    role: Role = Field(
+        title="Role",
+        description="User role (organizer/staff/assistant)",
     )
 
 

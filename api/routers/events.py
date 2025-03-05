@@ -2,10 +2,10 @@ import pathlib as pl
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Form, HTTPException, Path, Security, status
-from pydantic import PositiveInt
 import sqlalchemy
+from fastapi import APIRouter, Form, HTTPException, Path, Security, status
 from fastapi.responses import FileResponse
+from pydantic import PositiveInt
 
 from api.db.database import (Event, EventCreate, EventPublic,
                              SessionDependency, User, get_current_active_user)

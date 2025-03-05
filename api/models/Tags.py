@@ -28,25 +28,30 @@ class Tags(StrEnum):
     """
     Enum for the tags used in the API.
     """
-    users = auto()
     events = auto()
     assistants = auto()
+    staff = auto()
+    organizer = auto()
 # endregion
 
 
 # region metadata
 tags_metadata: list[TagMetadata] = [
     {
-        "name": "users",
-        "description": "Operations with users. The **login** logic is also here.",
-    },
-    {
-        "name": "events",
+        "name": Tags.events,
         "description": "Operations with events.",
     },
     {
-        "name": "assistants",
+        "name": Tags.assistants,
         "description": "Operations with assistants.",
+    },
+    {
+        "name": Tags.organizer,
+        "description": "Operations with organizers.",
+    },
+    {
+        "name": Tags.staff,
+        "description": "Operations with staff.",
     },
 ]
 # endregion
