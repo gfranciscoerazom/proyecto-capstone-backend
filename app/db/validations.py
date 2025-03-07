@@ -1,6 +1,6 @@
 import re
 import uuid
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID
@@ -8,6 +8,8 @@ from uuid import UUID
 from deepface import DeepFace  # type: ignore
 from fastapi import HTTPException, UploadFile, status
 from pydantic import AfterValidator
+
+from app.helpers.dateAndTime import get_quito_time
 
 
 def is_valid_ecuadorian_id(id_number: str) -> bool:
@@ -118,13 +120,13 @@ async def save_user_image(image: UploadFile, folder: str = "people_imgs") -> UUI
 
 
 def is_before_today(date: date) -> date:
-    if date > datetime.now().date():
+    if date > get_quito_time().date():
         raise ValueError("Date must be before today.")
     return date
 
 
 def is_after_today(date: date) -> date:
-    if date < datetime.now().date():
+    if date < get_quito_time().date():
         raise ValueError("Date must be after today.")
     return date
 

@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, time
 from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
@@ -15,6 +15,7 @@ from app.db.validations import (BeforeTodayDate, GoogleMapsURL, Password,
                                 PhoneNumber, TermsAndConditions,
                                 is_valid_ecuadorian_id,
                                 is_valid_ecuadorian_passport)
+from app.helpers.dateAndTime import get_quito_time
 from app.models.Gender import Gender
 from app.models.Role import Role
 from app.models.Token import TokenData
@@ -35,12 +36,6 @@ engine: Engine = create_engine(
 # endregion
 
 # Función para obtener la hora de Quito
-
-
-def get_quito_time() -> datetime:
-    """Función para obtener la hora actual en Quito, Ecuador."""
-    quito_timezone = timezone(timedelta(hours=-5))
-    return datetime.now(quito_timezone)
 
 
 # region Assistant

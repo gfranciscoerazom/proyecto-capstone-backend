@@ -8,3 +8,4 @@ ipykernel
 pytest
 isort
 tf-keras
+logfire[fastapi]

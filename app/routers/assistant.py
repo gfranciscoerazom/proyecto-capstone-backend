@@ -120,7 +120,6 @@ async def add_assistant(
     db_user.assistant = db_assistant
 
     session.add(db_user)
-
     try:
         session.commit()
     except sqlalchemy.exc.IntegrityError as e:
@@ -131,10 +130,9 @@ async def add_assistant(
             image_path.unlink()
 
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail=str(e)
-        )
-
+        ) from e
     session.refresh(db_user)
 
     background_tasks.add_task(

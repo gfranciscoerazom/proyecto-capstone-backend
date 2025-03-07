@@ -5,7 +5,9 @@ including authentication, registration, and user information retrieval.
 
 from typing import Annotated
 
-from fastapi import APIRouter, Form, Security
+import logfire
+import sqlalchemy
+from fastapi import APIRouter, Form, HTTPException, Security, status
 
 from app.db.database import (SessionDependency, User, UserCreate, UserPublic,
                              get_current_active_user)
@@ -76,6 +78,7 @@ async def add_user(
         )
     ],
     session: SessionDependency,
+    current_user: Annotated[User, Security(get_current_active_user, scopes=[Scopes.ORGANIZER])],
 ) -> User:
     """
     Add a new user of type organizer or staff.
@@ -97,8 +100,15 @@ async def add_user(
     }
     db_user: User = User.model_validate(user, update=extra_data)
     session.add(db_user)
-    session.commit()
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Organizer with this email already exists",
+        ) from e
     session.refresh(db_user)
+    logfire.info(f"User {db_user.email} added by {current_user.email}")
     return db_user
 
 # endregion

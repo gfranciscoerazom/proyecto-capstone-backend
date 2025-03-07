@@ -7,19 +7,22 @@ import pathlib as pl
 import time
 from typing import Annotated, Any, Callable
 
-from fastapi.security import OAuth2PasswordRequestForm
+import logfire
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.concurrency import asynccontextmanager
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
-from app.db.database import User, authenticate_user, create_db_and_tables, engine
+from app.db.database import (User, authenticate_user, create_db_and_tables,
+                             engine)
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import tags_metadata
 from app.models.Token import Token
 from app.routers import assistant, events, organizer, staff
 from app.security.security import create_access_token, get_password_hash
+from app.settings.config import settings
 
 # region FastAPI Configuration
 
@@ -46,7 +49,7 @@ async def lifespan(app: FastAPI):
     with Session(engine) as session:
         if not (
             session.exec(
-                select(User).
+                select(User.email).
                 where(User.email == "admin@udla.edu.ec")
             ).first()
         ):
@@ -132,6 +135,16 @@ Tutored by:
     lifespan=lifespan,
 )
 # endregion
+
+logfire.configure(
+    token=settings.LOGS_TOKEN,
+    code_source=logfire.CodeSource(
+        repository="https://github.com/gfranciscoerazom/proyecto-capstone-backend",
+        revision="develop",
+        root_path="/app"
+    ),
+)
+logfire.instrument_fastapi(app, capture_headers=True)
 
 
 # region Routers

@@ -82,6 +82,11 @@ class Settings(BaseSettings):
         description="App password for the email sender",
         examples=["xxxx xxxx xxxx xxxx"],
     )
+    LOGS_TOKEN: Final[str] = Field(
+        title="Logs Token",
+        description="Token to connect to the system",
+        examples=["xxxx_xx_xx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+    )
 
     model_config = SettingsConfigDict(
         env_file=Path.cwd() / ".env",
