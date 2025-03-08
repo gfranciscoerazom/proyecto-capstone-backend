@@ -3,11 +3,11 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import sqlalchemy
-from fastapi import APIRouter, Form, HTTPException, Path, Security, status
+from fastapi import APIRouter, Body, Form, HTTPException, Path, Security, status
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
 
-from app.db.database import (Event, EventCreate, EventPublic,
+from app.db.database import (Event, EventCreate, EventDate, EventDateCreate, EventPublicWithEventDate,
                              SessionDependency, User, get_current_active_user)
 from app.db.validations import save_image
 from app.models.Scopes import Scopes
@@ -23,7 +23,7 @@ router = APIRouter(
 
 @router.post(
     "/add",
-    response_model=EventPublic,
+    response_model=EventPublicWithEventDate,
 
     summary="Add an event",
     response_description="The added event",
@@ -85,7 +85,7 @@ async def add_event(
 
 @router.get(
     "/{event_id}",
-    response_model=EventPublic,
+    response_model=EventPublicWithEventDate,
     dependencies=[
         Security(
             get_current_active_user,
@@ -100,8 +100,6 @@ async def get_event_by_id(
     event_id: Annotated[
         PositiveInt,
         Path(
-            ge=1,
-
             title="Event ID",
             description="The ID of the event to be retrieved.",
         )
@@ -177,4 +175,130 @@ def get_event_image(
         )
 
     return image_path.as_posix()
+
+
+@router.post(
+    "/{event_id}/dates/add",
+    response_model=EventPublicWithEventDate,
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ORGANIZER]
+        )
+    ],
+
+    summary="Add one or more dates to an event",
+    response_description="The added dates",
+)
+async def add_event_dates(
+    event_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event ID",
+            description="The ID of the event to add dates to.",
+        )
+    ],
+    dates: Annotated[
+        list[EventDateCreate],
+        Body(
+            title="Event dates",
+            description="The dates to be added to the event.",
+        )
+    ],
+    session: SessionDependency,
+) -> Event:
+    """
+    Endpoint to add one or more dates to an event.
+
+    This endpoint allows users to add dates for a specific event by providing the event ID along with the date(s) to be added.
+
+    \f
+
+    Args:
+        event_id (PositiveInt): The ID of the event to add dates to.
+        dates (list[EventDateCreate]): The list of dates to be added.
+        session (SessionDependency): The database session dependency.
+
+    Returns:
+        list[EventDatePublic]: The list of added event dates.
+
+    Raises:
+        HTTPException: If the event is not found or dates could not be added.
+    """
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    event.event_dates.extend(
+        EventDate.model_validate(date) for date in dates
+    )
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
+
+@router.post(
+    "/{event_id}/date/add",
+    response_model=EventPublicWithEventDate,
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ORGANIZER]
+        )
+    ],
+
+    summary="Add a date to an event",
+    response_description="The added date",
+)
+async def add_event_date(
+    event_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event ID",
+            description="The ID of the event to add a date to.",
+        )
+    ],
+    date: Annotated[
+        EventDateCreate,
+        Form(
+            title="Event date",
+            description="The date to be added to the event.",
+        )
+    ],
+    session: SessionDependency,
+) -> Event:
+    """
+    Endpoint to add a date to an event.
+
+    This endpoint allows users to add a date for a specific event by providing the event ID along with the date to be added.
+
+    \f
+
+    Args:
+        event_id (PositiveInt): The ID of the event to add a date to.
+        date (EventDateCreate): The date to be added.
+        session (SessionDependency): The database session dependency.
+
+    Returns:
+        EventPublic: The added event date.
+
+    Raises:
+        HTTPException: If the event is not found or the date could not be added.
+    """
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    new_date: EventDate = EventDate.model_validate(date)
+    event.event_dates.append(new_date)
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
 # endregion

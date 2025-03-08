@@ -1,7 +1,7 @@
 import re
 
 
-def validate_ecuadorian_id(id_number: str) -> bool:
+def is_valid_ecuadorian_id(id_number: str) -> bool:
     """
     Validates an Ecuadorian identification number.
 
@@ -37,7 +37,7 @@ def validate_ecuadorian_id(id_number: str) -> bool:
     return check_digit == int(id_number[9])
 
 
-def validate_ecuadorian_passport_number(passport_number: str) -> bool:
+def is_valid_ecuadorian_passport_number(passport_number: str) -> bool:
     """
     Validates an Ecuadorian passport number.
 

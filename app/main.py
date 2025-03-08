@@ -101,6 +101,7 @@ Tutored by:
 
 * [Documentation in Swagger UI](http://127.0.0.1:8000/docs)
 * [Documentation in ReDoc](http://127.0.0.1:8000/redoc)
+* [GitHub Repository](https://github.com/gfranciscoerazom/proyecto-capstone-backend)
 
 ```
  _______ __                              __                                           __ __         
@@ -141,7 +142,7 @@ logfire.configure(
     code_source=logfire.CodeSource(
         repository="https://github.com/gfranciscoerazom/proyecto-capstone-backend",
         revision="develop",
-        root_path="/app"
+        root_path="."
     ),
 )
 logfire.instrument_fastapi(app, capture_headers=True)

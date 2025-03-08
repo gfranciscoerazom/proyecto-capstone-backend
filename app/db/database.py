@@ -12,10 +12,9 @@ from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
 from app.db.validations import (BeforeTodayDate, GoogleMapsURL, Password,
-                                PhoneNumber, TermsAndConditions,
-                                is_valid_ecuadorian_id,
-                                is_valid_ecuadorian_passport)
+                                PhoneNumber, TermsAndConditions, UpperStr)
 from app.helpers.dateAndTime import get_quito_time
+from app.helpers.validations import is_valid_ecuadorian_id, is_valid_ecuadorian_passport_number
 from app.models.Gender import Gender
 from app.models.Role import Role
 from app.models.Token import TokenData
@@ -42,7 +41,7 @@ engine: Engine = create_engine(
 
 class AssistantBase(SQLModel):
     """Base class for Assistant models."""
-    id_number: str = Field(
+    id_number: UpperStr = Field(
         unique=True,
         index=True,
         min_length=8,
@@ -79,7 +78,7 @@ class AssistantBase(SQLModel):
                 if not is_valid_ecuadorian_id(self.id_number):
                     raise ValueError("Invalid Ecuadorian ID number")
             case TypeId.PASSPORT:
-                if not is_valid_ecuadorian_passport(self.id_number):
+                if not is_valid_ecuadorian_passport_number(self.id_number):
                     raise ValueError("Invalid Ecuadorian passport number")
             case _:
                 raise ValueError("Invalid ID number type")
@@ -538,13 +537,6 @@ class EventDateBase(SQLModel):
         title="End Time",
         description="Event end time"
     )
-    event_id: int = Field(
-        foreign_key="event.id",
-        index=True,
-
-        title="Event ID",
-        description="Foreign key to Event table"
-    )
 
 
 class EventDate(EventDateBase, table=True):
@@ -555,6 +547,14 @@ class EventDate(EventDateBase, table=True):
 
         title="ID",
         description="Event Date ID"
+    )
+    event_id: int = Field(
+        default=0,
+        foreign_key="event.id",
+        index=True,
+
+        title="Event ID",
+        description="Foreign key to Event table"
     )
 
     event: Event = Relationship(
@@ -567,6 +567,10 @@ class EventDatePublic(EventDateBase):
     id: int = Field(
         title="ID",
         description="Event Date ID"
+    )
+    event_id: int = Field(
+        title="Event ID",
+        description="Foreign key to Event table"
     )
 
 
@@ -591,7 +595,12 @@ class EventDateUpdate(SQLModel):
         default=None, title="Location", description="Event location")
 
 
+class EventPublicWithEventDate(EventPublic):
+    event_dates: list[EventDatePublic] = []
+
+
 # region Registration
+
 
 class GuestAssociation(SQLModel, table=True):
     """Association table for many-to-many relationship between Registrations."""
