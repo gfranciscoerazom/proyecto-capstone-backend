@@ -12,8 +12,8 @@ from sqlmodel import select
 from app.db.database import (Assistant, AssistantCreate, SessionDependency,
                              User, UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
-from app.db.validations import save_user_image
 from app.helpers.mail import send_new_assistant_email
+from app.helpers.validations import save_user_image
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags

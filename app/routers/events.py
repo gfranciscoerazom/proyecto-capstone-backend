@@ -11,8 +11,7 @@ from pydantic import PositiveInt
 from app.db.database import (Event, EventCreate, EventDate, EventDateCreate,
                              EventPublicWithEventDate, SessionDependency, User,
                              get_current_active_user)
-from app.db.validations import save_image
-from app.helpers.validations import are_unique_dates
+from app.helpers.validations import are_unique_dates, save_image
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
 

@@ -11,8 +11,8 @@ from sqlalchemy import Engine
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
-from app.db.validations import (BeforeTodayDate, GoogleMapsURL, Password,
-                                PhoneNumber, TermsAndConditions, UpperStr)
+from app.db.datatypes import (BeforeTodayDate, GoogleMapsURL, Password,
+                              PhoneNumber, TermsAndConditions, UpperStr)
 from app.helpers.dateAndTime import get_quito_time
 from app.helpers.validations import (is_valid_ecuadorian_id,
                                      is_valid_ecuadorian_passport_number)
