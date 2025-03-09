@@ -136,3 +136,8 @@ UpperStr = Annotated[
     str,
     AfterValidator(str.upper)
 ]
+
+# OrderedList = Annotated[
+#     list[Any],
+#     AfterValidator(lambda x: sorted(x))
+# ]

@@ -3,13 +3,16 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import sqlalchemy
-from fastapi import APIRouter, Body, Form, HTTPException, Path, Security, status
+from fastapi import (APIRouter, Body, Form, HTTPException, Path, Security,
+                     status)
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
 
-from app.db.database import (Event, EventCreate, EventDate, EventDateCreate, EventPublicWithEventDate,
-                             SessionDependency, User, get_current_active_user)
+from app.db.database import (Event, EventCreate, EventDate, EventDateCreate,
+                             EventPublicWithEventDate, SessionDependency, User,
+                             get_current_active_user)
 from app.db.validations import save_image
+from app.helpers.validations import are_unique_dates
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
 
@@ -231,9 +234,16 @@ async def add_event_dates(
             detail="Event not found",
         )
 
-    event.event_dates.extend(
-        EventDate.model_validate(date) for date in dates
-    )
+    new_dates: list[EventDate] = [
+        EventDate.model_validate(date) for date in dates]
+
+    if not are_unique_dates(event, new_dates):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="In the provided dates, there are duplicates with the existing dates or among themselves.",
+        )
+
+    event.event_dates.extend(new_dates)
     session.add(event)
     session.commit()
     session.refresh(event)
@@ -295,6 +305,13 @@ async def add_event_date(
         )
 
     new_date: EventDate = EventDate.model_validate(date)
+
+    if not are_unique_dates(event, new_date):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The provided date is a duplicate with an existing date.",
+        )
+
     event.event_dates.append(new_date)
     session.add(event)
     session.commit()

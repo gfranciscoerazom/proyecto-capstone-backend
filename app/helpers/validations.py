@@ -1,4 +1,10 @@
+from __future__ import annotations
+
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.db.database import Event, EventDate
 
 
 def is_valid_ecuadorian_id(id_number: str) -> bool:
@@ -48,3 +54,28 @@ def is_valid_ecuadorian_passport_number(passport_number: str) -> bool:
         bool: True if the passport number is valid, False otherwise.
     """
     return bool(re.match(r"^A\d{7}$", passport_number))
+
+
+def are_unique_dates(event: Event, dates: list[EventDate] | EventDate) -> bool:
+    """
+    Checks if the dates to be added to an event are unique.
+
+    Args:
+        event (Event): The event to add dates to.
+        dates (list[EventDate]): The list of dates to be added.
+
+    Returns:
+        bool: True if the dates are unique, False otherwise.
+    """
+    if not isinstance(dates, list):
+        dates = [dates]
+
+    existing_event_dates: list[EventDate] = event.event_dates.copy()
+    dates = dates.copy()
+
+    for date in dates:
+        if date in existing_event_dates:
+            return False
+        existing_event_dates.append(date)
+
+    return True

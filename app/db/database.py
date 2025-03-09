@@ -5,8 +5,8 @@ from uuid import UUID
 import jwt
 from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.security import SecurityScopes
-from pydantic import (EmailStr, PositiveInt, ValidationError, field_validator,
-                      model_validator)
+from pydantic import (AfterValidator, EmailStr, PositiveInt, ValidationError,
+                      field_validator, model_validator)
 from sqlalchemy import Engine
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
@@ -14,7 +14,8 @@ from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
 from app.db.validations import (BeforeTodayDate, GoogleMapsURL, Password,
                                 PhoneNumber, TermsAndConditions, UpperStr)
 from app.helpers.dateAndTime import get_quito_time
-from app.helpers.validations import is_valid_ecuadorian_id, is_valid_ecuadorian_passport_number
+from app.helpers.validations import (is_valid_ecuadorian_id,
+                                     is_valid_ecuadorian_passport_number)
 from app.models.Gender import Gender
 from app.models.Role import Role
 from app.models.Token import TokenData
@@ -432,6 +433,16 @@ class Event(EventBase, table=True):
         description="Foreign key to User table (organizer)"
     )
 
+    organizer: User = Relationship(
+        back_populates="organized_events"
+    )
+    event_dates: list["EventDate"] = Relationship(
+        back_populates="event"
+    )
+    registrations: list["Registration"] = Relationship(
+        back_populates="event"
+    )
+
     @field_validator("organizer_id", mode="after")
     @classmethod
     def is_valid_organizer_id(cls, organizer_id: int) -> int:
@@ -450,16 +461,6 @@ class Event(EventBase, table=True):
                 raise ValueError("User is not an organizer.")
 
         return organizer_id
-
-    organizer: User = Relationship(
-        back_populates="organized_events"
-    )
-    event_dates: list["EventDate"] = Relationship(
-        back_populates="event"
-    )
-    registrations: list["Registration"] = Relationship(
-        back_populates="event"
-    )
 
 
 class EventPublic(EventBase):
@@ -538,6 +539,54 @@ class EventDateBase(SQLModel):
         description="Event end time"
     )
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, EventDateBase):
+            raise TypeError(
+                f"Comparing EventDateBase with {type(other)} is not supported."
+            )
+        return self.day_date == other.day_date
+
+    def __ne__(self, other: object) -> bool:
+        if not isinstance(other, EventDateBase):
+            raise TypeError(
+                f"Comparing EventDateBase with {type(other)} is not supported."
+            )
+        return self.day_date != other.day_date
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, EventDateBase):
+            raise TypeError(
+                f"Comparing EventDateBase with {type(other)} is not supported."
+            )
+        return self.day_date < other.day_date
+
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, EventDateBase):
+            raise TypeError(
+                f"Comparing EventDateBase with {type(other)} is not supported."
+            )
+        return self.day_date <= other.day_date
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, EventDateBase):
+            raise TypeError(
+                f"Comparing EventDateBase with {type(other)} is not supported."
+            )
+        return self.day_date > other.day_date
+
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, EventDateBase):
+            raise TypeError(
+                f"Comparing EventDateBase with {type(other)} is not supported."
+            )
+        return self.day_date >= other.day_date
+
+    @model_validator(mode="after")
+    def validate_start_time(self) -> Self:
+        if self.start_time >= self.end_time:
+            raise ValueError("Start time must be before end time.")
+        return self
+
 
 class EventDate(EventDateBase, table=True):
     """EventDate database model."""
@@ -596,7 +645,10 @@ class EventDateUpdate(SQLModel):
 
 
 class EventPublicWithEventDate(EventPublic):
-    event_dates: list[EventDatePublic] = []
+    event_dates: Annotated[
+        list[EventDatePublic],
+        AfterValidator(lambda x: sorted(x))
+    ] = []
 
 
 # region Registration
