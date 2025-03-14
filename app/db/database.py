@@ -17,6 +17,7 @@ from app.helpers.dateAndTime import get_quito_time
 from app.helpers.validations import (is_valid_ecuadorian_id,
                                      is_valid_ecuadorian_passport_number)
 from app.models.Gender import Gender
+from app.models.Reaction import Reaction
 from app.models.Role import Role
 from app.models.Token import TokenData
 from app.models.TypeId import TypeId
@@ -34,8 +35,6 @@ engine: Engine = create_engine(
     connect_args=connect_args
 )
 # endregion
-
-# Función para obtener la hora de Quito
 
 
 # region Assistant
@@ -107,9 +106,8 @@ class Assistant(AssistantBase, table=True):
     user: "User" = Relationship(
         back_populates="assistant"
     )
-
-    registrations: list["Registration"] = Relationship(
-        back_populates="assistant"
+    registrations_as_companion: list["Registration"] = Relationship(
+        back_populates="companion",
     )
 
 
@@ -245,6 +243,9 @@ class User(UserBase, table=True):
     )
     organized_events: list["Event"] = Relationship(
         back_populates="organizer",
+    )
+    registrations_as_assistant: list["Registration"] = Relationship(
+        back_populates="assistant",
     )
 
     @model_validator(mode="after")
@@ -652,53 +653,46 @@ class EventPublicWithEventDate(EventPublic):
 
 
 # region Registration
-
-
-class GuestAssociation(SQLModel, table=True):
-    """Association table for many-to-many relationship between Registrations."""
-    registration_id: int = Field(
-        foreign_key="registration.id",
-        primary_key=True,
-        title="Registration ID",
-        description="Foreign key to Registration table"
-    )
-    guest_id: int = Field(
-        foreign_key="registration.id",
-        primary_key=True,
-        title="Guest ID",
-        description="Foreign key to Registration table"
-    )
-
-
 class RegistrationBase(SQLModel):
     """Base class for Registration models."""
-    event_id: int = Field(
+    event_id: int | None = Field(
+        default=None,
         foreign_key="event.id",
+        primary_key=True,
+
         title="Event ID",
         description="Foreign key to Event table"
     )
-    assistant_id: int = Field(
+    assistant_id: int | None = Field(
+        default=None,
+        foreign_key="user.id",
+        primary_key=True,
+
+        title="User ID",
+        description="Foreign key to User table"
+    )
+    companion_id: int | None = Field(
+        default=None,
         foreign_key="assistant.user_id",
-        title="Assistant ID",
-        description="Foreign key to Assistant table"
+        primary_key=True,
+        nullable=True,
+
+        title="Companion ID",
+        description="Foreign key to Companion table"
     )
 
 
 class Registration(RegistrationBase, table=True):
     """Registration database model."""
-    id: int | None = Field(
-        default=None,
-        primary_key=True,
-        title="ID",
-        description="Registration ID"
-    )
     created_at: datetime = Field(
         default_factory=get_quito_time,
+
         title="Created At",
         description="Registration creation date and time, in Quito timezone"
     )
     attended: bool = Field(
         default=False,
+
         title="Attended",
         description="Attendance status"
     )
@@ -708,48 +702,32 @@ class Registration(RegistrationBase, table=True):
         title="Attendance Time",
         description="Time of attendance"
     )
-    reaction: int = Field(
-        default=0,
+    reaction: Reaction = Field(
+        default=Reaction.NO_REACTION,
+        ge=-1,
+        le=1,
+
         title="Reaction",
         description="User reaction (1: Liked, -1: Disliked, 0: No reaction)"
     )
     reaction_date: datetime | None = Field(
         default=None,
+
         title="Reaction Date",
         description="Date of reaction"
     )
-
+    assistant: User = Relationship(
+        back_populates="registrations_as_assistant",
+    )
+    companion: Assistant | None = Relationship(
+        back_populates="registrations_as_companion",
+    )
     event: Event = Relationship(
         back_populates="registrations"
-    )
-    assistant: Assistant = Relationship(
-        back_populates="registrations"
-    )
-    guest_registrations: list["Registration"] = Relationship(
-        back_populates="guest_of_registration",
-        link_model=GuestAssociation,
-        sa_relationship_kwargs={
-            "primaryjoin": "Registration.id==GuestAssociation.registration_id",
-            "secondaryjoin": "Registration.id==GuestAssociation.guest_id",
-            "foreign_keys": "[GuestAssociation.registration_id, GuestAssociation.guest_id]"
-        }
-    )
-    guest_of_registration: list["Registration"] = Relationship(
-        back_populates="guest_registrations",
-        link_model=GuestAssociation,
-        sa_relationship_kwargs={
-            "primaryjoin": "Registration.id==GuestAssociation.guest_id",
-            "secondaryjoin": "Registration.id==GuestAssociation.registration_id",
-            "foreign_keys": "[GuestAssociation.guest_id, GuestAssociation.registration_id]"
-        }
     )
 
 
 class RegistrationPublic(RegistrationBase):
-    id: int = Field(
-        title="ID",
-        description="Registration ID"
-    )
     created_at: datetime = Field(
         title="Created At",
         description="Registration creation date and time, in Quito timezone"
@@ -770,11 +748,6 @@ class RegistrationPublic(RegistrationBase):
         title="Reaction Date",
         description="Date of reaction"
     )
-
-
-class RegistrationCreate(RegistrationBase):
-    """Registration create model for API requests."""
-    pass
 
 
 class RegistrationUpdate(SQLModel):
@@ -814,6 +787,12 @@ class RegistrationUpdate(SQLModel):
         title="Guest Of ID",
         description="Guest Of Registration ID"
     )
+
+#####################################################
+#
+#   Functions
+#
+#####################################################
 
 
 def create_db_and_tables() -> None:

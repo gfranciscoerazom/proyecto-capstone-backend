@@ -9,7 +9,7 @@ from fastapi import (APIRouter, BackgroundTasks, File, Form, HTTPException,
 from fastapi.responses import FileResponse
 from sqlmodel import select
 
-from app.db.database import (Assistant, AssistantCreate, SessionDependency,
+from app.db.database import (Assistant, AssistantCreate, Event, Registration, RegistrationPublic, SessionDependency,
                              User, UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
 from app.helpers.mail import send_new_assistant_email
@@ -329,3 +329,152 @@ def get_user_image(
         )
 
     return image_path.as_posix()
+
+
+@router.post(
+    "/register-to-event/{event_id}",
+    response_model=RegistrationPublic,
+
+    summary="Register to an event",
+    response_description="Successful Response with the registration",
+)
+def register_to_event(
+    event_id: Annotated[
+        int,
+        Path(
+            title="Event ID",
+            description="The ID of the event to register to",
+        )
+    ],
+    session: SessionDependency,
+    current_user: Annotated[
+        User,
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.USER]
+        )
+    ],
+) -> Registration:
+    """
+    Endpoint to register to an event.
+
+    This endpoint allows users to register to an event by providing the event's ID.
+
+    \f
+
+    Args:
+        event_id (int): The ID of the event to register to.
+        session (SessionDependency): The database session dependency.
+        current_user (User): The current active user, obtained from the dependency injection.
+
+    Returns:
+        Registration: The registration to the event.
+
+    Raises:
+        HTTPException: If the event is not found in the database.
+    """
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    registration: Registration = Registration(
+        event=event,
+        assistant=current_user,
+        companion=None,
+    )
+
+    session.add(registration)
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        ) from e
+    session.refresh(registration)
+
+    return registration
+
+
+@router.post(
+    "/register-companion-to-event/{event_id}",
+    response_model=RegistrationPublic,
+
+    summary="Register a companion to an event",
+    response_description="Successful Response with the registration",
+)
+def register_companion_to_event(
+    event_id: Annotated[
+        int,
+        Path(
+            title="Event ID",
+            description="The ID of the event to register a companion to",
+        )
+    ],
+    companion_id: Annotated[
+        int,
+        Form(
+            title="Companion ID",
+            description="The ID of the companion to register to the event",
+        )
+    ],
+    session: SessionDependency,
+    current_user: Annotated[
+        User,
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.USER]
+        )
+    ],
+) -> Registration:
+    """
+    Endpoint to register a companion to an event.
+
+    This endpoint allows users to register a companion to an event by providing the event's ID
+    and the companion's ID.
+
+    \f
+
+    Args:
+        event_id (int): The ID of the event to register a companion to.
+        companion_id (int): The ID of the companion to register to the event.
+        session (SessionDependency): The database session dependency.
+        current_user (User): The current active user, obtained from the dependency injection.
+
+    Returns:
+        Registration: The registration of the companion to the event.
+
+    Raises:
+        HTTPException: If the event or the companion is not found in the database.
+    """
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    if not (companion := session.get(Assistant, companion_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Companion not found",
+        )
+
+    registration: Registration = Registration(
+        event=event,
+        assistant=current_user,
+        companion=companion,
+    )
+
+    session.add(registration)
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        ) from e
+    session.refresh(registration)
+
+    return registration
