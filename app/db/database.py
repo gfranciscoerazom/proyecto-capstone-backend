@@ -16,6 +16,7 @@ from app.db.datatypes import (BeforeTodayDate, GoogleMapsURL, Password,
 from app.helpers.dateAndTime import get_quito_time
 from app.helpers.validations import (is_valid_ecuadorian_id,
                                      is_valid_ecuadorian_passport_number)
+from app.models.TypeCapacity import TypeCapacity
 from app.models.Gender import Gender
 from app.models.Reaction import Reaction
 from app.models.Role import Role
@@ -80,8 +81,7 @@ class AssistantBase(SQLModel):
             case TypeId.PASSPORT:
                 if not is_valid_ecuadorian_passport_number(self.id_number):
                     raise ValueError("Invalid Ecuadorian passport number")
-            case _:
-                raise ValueError("Invalid ID number type")
+
         return self
 
 
@@ -260,8 +260,6 @@ class User(UserBase, table=True):
                 if not self.email.endswith("udla.edu.ec"):
                     raise ValueError(
                         "Organizer or staff email must be from UDLA domain")
-            case _:
-                raise ValueError("Invalid role")
 
         return self
 
@@ -369,29 +367,16 @@ class EventBase(SQLModel):
         title="Maps Link",
         description="Event maps link (https://maps.app.goo.gl/)"
     )
-    max_capacity: PositiveInt | None = Field(
-        default=None,
+    capacity: PositiveInt = Field(
         ge=1,
 
         title="Max Capacity",
         description="Event maximum capacity"
     )
-    venue_capacity: PositiveInt | None = Field(
-        default=None,
-        ge=1,
-
-        title="Venue Capacity",
-        description="Event venue capacity"
+    capacity_type: TypeCapacity = Field(
+        title="Capacity Type",
+        description="Type of capacity for the event"
     )
-
-    @model_validator(mode="after")
-    def validate_capacity(self) -> Self:
-        if not bool(self.max_capacity) ^ bool(self.venue_capacity):
-            raise ValueError(
-                "Either max_capacity or venue_capacity should be provided, not both."
-            )
-
-        return self
 
 
 class Event(EventBase, table=True):

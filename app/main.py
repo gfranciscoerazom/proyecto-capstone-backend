@@ -1,7 +1,16 @@
 """
-This module contains the main application logic, including routing, middleware,
-and the application's lifecycle management. It serves as the entrypoint for
-the API and orchestrates interactions with other modules.
+This module contains the code that is necessary to run when the application starts.
+And some endpoints that don't belong to any specific router.
+
+This module contains the following things:
+
+- lifespan: An async context manager that runs code before the server starts and after the server stops.
+- app: A FastAPI application instance that contains the API's configuration.
+- logfire: A logging configuration that sends logs to LogFire.
+- include_router: Where the routers are added to the FastAPI application.
+- endpoint: Endpoint that doesn't belong to any specific router.
+- middlewares: Middlewares that add custom headers to the HTTP response.
+- Entrypoint: The main entrypoint for the application.
 """
 import pathlib as pl
 import time
@@ -29,13 +38,15 @@ from app.settings.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Lifespan event handler for the FastAPI application.
+    """Lifespan event handler for the FastAPI application.
     This function is used to manage the lifespan of the FastAPI application.
     It runs code before the server starts and after the server stops.
 
     In this case before the server starts do the following:
     - Create the database and tables if they don't exist
+
+    And after the server stops do the following:
+    - Delete the files in the temp_imgs folder with the exception of the .gitkeep file
 
     Args:
         app (FastAPI): The FastAPI application instance.

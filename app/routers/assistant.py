@@ -9,8 +9,9 @@ from fastapi import (APIRouter, BackgroundTasks, File, Form, HTTPException,
 from fastapi.responses import FileResponse
 from sqlmodel import select
 
-from app.db.database import (Assistant, AssistantCreate, Event, Registration, RegistrationPublic, SessionDependency,
-                             User, UserAssistantCreate, UserAssistantPublic,
+from app.db.database import (Assistant, AssistantCreate, Event, Registration,
+                             RegistrationPublic, SessionDependency, User,
+                             UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
 from app.helpers.mail import send_new_assistant_email
 from app.helpers.validations import save_user_image

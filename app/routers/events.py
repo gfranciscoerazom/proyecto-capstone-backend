@@ -14,6 +14,7 @@ from app.db.database import (Event, EventCreate, EventDate, EventDateCreate,
 from app.helpers.validations import are_unique_dates, save_image
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
+from app.models.TypeCapacity import TypeCapacity
 
 router = APIRouter(
     prefix="/events",
@@ -57,6 +58,9 @@ async def add_event(
     - Event: The added event.
     """
     event_image_uuid: UUID = await save_image(image=event.image, folder="events_imgs")
+
+    if event.capacity_type == TypeCapacity.SITE_CAPACITY:
+        event.capacity -= int(event.capacity * 0.1)
 
     extra_data_event: dict[str, Any] = {
         "image_uuid": event_image_uuid,
