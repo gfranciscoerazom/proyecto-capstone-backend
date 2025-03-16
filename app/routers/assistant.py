@@ -320,10 +320,16 @@ def get_user_image(
     Raises:
         HTTPException: If the image is not found in the images database.
     """
-    normalized_image_path: pl.Path = safe_path_join(
-        pl.Path("./data/people_imgs"),
-        f"{image_uuid}.png"
-    )
+    try:
+        normalized_image_path: pl.Path = safe_path_join(
+            pl.Path("./data/people_imgs"),
+            f"{image_uuid}.png"
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid image path",
+        )
 
     if not normalized_image_path.exists():
         raise HTTPException(
