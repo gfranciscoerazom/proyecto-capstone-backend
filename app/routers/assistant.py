@@ -13,6 +13,7 @@ from app.db.database import (Assistant, AssistantCreate, Event, Registration,
                              RegistrationPublic, SessionDependency, User,
                              UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
+from app.helpers.files import safe_path_join
 from app.helpers.mail import send_new_assistant_email
 from app.helpers.validations import save_user_image
 from app.models.Role import Role
@@ -319,17 +320,18 @@ def get_user_image(
     Raises:
         HTTPException: If the image is not found in the images database.
     """
-    image_path: pl.Path = pl.Path(
-        f"./data/people_imgs/{image_uuid}.png"
+    normalized_image_path: pl.Path = safe_path_join(
+        pl.Path("./data/people_imgs"),
+        f"{image_uuid}.png"
     )
 
-    if not image_path.exists():
+    if not normalized_image_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Image not found",
         )
 
-    return image_path.as_posix()
+    return normalized_image_path.as_posix()
 
 
 @router.post(

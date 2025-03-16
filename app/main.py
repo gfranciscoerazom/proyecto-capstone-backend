@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Code to run after the server stops
-    temp_imgs_path = pl.Path("./data/temp_imgs")
+    temp_imgs_path = pl.Path("./data/temp_imgs").resolve()
     if temp_imgs_path.exists() and temp_imgs_path.is_dir():
         for item in temp_imgs_path.iterdir():
             if item.name == ".gitkeep":
