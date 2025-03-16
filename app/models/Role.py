@@ -4,7 +4,7 @@ Defines roles for the API.
 
 from enum import StrEnum, auto
 
-from api.models.Scopes import Scopes
+from app.models.Scopes import Scopes
 
 
 class Role(StrEnum):
@@ -14,7 +14,8 @@ class Role(StrEnum):
     Represents the different roles that can be assigned to a user in the API.
     """
     ASSISTANT = auto()
-    ADMIN = auto()
+    STAFF = auto()
+    ORGANIZER = auto()
 
     def get_allowed_scopes(self) -> set[Scopes]:
         """
@@ -25,6 +26,7 @@ class Role(StrEnum):
         """
         role_scopes: dict[Role, set[Scopes]] = {
             Role.ASSISTANT: {Scopes.USER, Scopes.ASSISTANT},
-            Role.ADMIN: {Scopes.USER, Scopes.ASSISTANT, Scopes.ADMIN}
+            Role.STAFF: {Scopes.USER, Scopes.STAFF},
+            Role.ORGANIZER: {Scopes.USER, Scopes.ORGANIZER}
         }
         return role_scopes.get(self, set())

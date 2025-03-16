@@ -2,21 +2,19 @@
 This module provides security related functions, including password hashing,
 verification, and JWT token creation.
 """
-import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import bcrypt
 import jwt
-from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from api.models.Scopes import scopes
-from api.settings.config import settings
+from app.models.Scopes import scopes
+from app.settings.config import settings
 
 # region variables
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/users/token",
+    tokenUrl="/token",
     scopes=scopes,  # type: ignore
 )
 # endregion
@@ -81,25 +79,4 @@ def create_access_token(
     return encoded_jwt
 
 
-def validate_password(password: str) -> None:
-    """
-    Validate the password according to the defined rules.
-
-    Args:
-        password (str): The password to validate.
-
-    Raises:
-        HTTPException: If the password does not meet the required criteria.
-    """
-    if (
-        len(password) < 9 or
-        len(re.findall(r"[a-z]", password)) < 3 or
-        len(re.findall(r"[A-Z]", password)) < 2 or
-        len(re.findall(r"\d", password)) < 2 or
-        len(re.findall(r"[¡!@#$%^¿?&*()\-_+./\\]", password)) < 2
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain at least 3 lowercase, 2 uppercase, 2 digits, 2 special character and be at least 9 characters long.",
-        )
 # endregion
