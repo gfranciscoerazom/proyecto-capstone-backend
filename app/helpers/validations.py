@@ -118,9 +118,9 @@ def is_valid_ecuadorian_id(id_number: str) -> bool:
     if len(id_number) != 10:
         return False
 
-    # Check if the first two digits are between 0 and 24
+    # Check if the first two digits are between 1 and 24
     province_code = int(id_number[:2])
-    if province_code < 0 or province_code > 24:
+    if province_code < 1 or province_code > 24:
         return False
 
     # Check if the third character is a digit

@@ -388,10 +388,16 @@ def register_to_event(
             detail="Event not found",
         )
 
+    if not (assistant := session.get(Assistant, current_user.id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assistant not found",
+        )
+
     registration: Registration = Registration(
         event=event,
         assistant=current_user,
-        companion=None,
+        companion=assistant,
     )
 
     session.add(registration)

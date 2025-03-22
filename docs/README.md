@@ -20,20 +20,20 @@ This project is a FastAPI-based application that provides user authentication an
 2. **Create and activate a virtual environment:**
 
     ```sh
-    python -m .venv venv
+    python3.11 -m venv .venv
     source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
     ```
 
 3. **Install the dependencies:**
 
     ```sh
-    pip install -r requirements-[windows|linux].txt
+    pip install -r requirements.txt
     ```
 
     or
 
     ```sh
-    pip install "fastapi[all]" PyJWT bcrypt Faker sqlmodel deepface ipykernel pytest isort tf-keras
+    pip install "fastapi[all]" PyJWT bcrypt Faker sqlmodel deepface ipykernel pytest isort tf-keras "logfire[fastapi]" pymysql cryptography
     ```
 
 4. **Add the `.env` file:**
@@ -46,7 +46,17 @@ This project is a FastAPI-based application that provides user authentication an
     SECRET_KEY="your_secret_key"
     ALGORITHM="HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES=30
+
     DATABASE_URL="sqlite:///data/database.db"
+
+    # Email configuration
+    # Email that will send the emails
+    EMAIL_SENDER="user@example.com"
+    # App password of the email
+    EMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"
+
+    # Write token of logfire
+    LOGS_TOKEN="xxxx_xx_xx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     ```
 
 ## Running the Application
@@ -54,11 +64,11 @@ This project is a FastAPI-based application that provides user authentication an
 1. **Start the FastAPI server:**
 
     ```sh
-    fastapi dev main # In production use fastapi run main
+    fastapi dev # In production use fastapi run
     ```
 
 2. **Access the application:**
-    Open your browser and navigate to `http://127.0.0.1:8000`.
+    Open your browser and navigate to `http://127.0.0.1:8000/docs`.
 
 ## Running Tests
 

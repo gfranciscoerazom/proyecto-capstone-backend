@@ -1,18 +1,7 @@
 {
-    "IDX.aI.enableInlineCompletion": true,
-    "IDX.aI.enableCodebaseIndexing": true,
     "sonarlint.connectedMode.project": {
         "connectionId": "gfranciscoerazom",
         "projectKey": "gfranciscoerazom_proyecto-capstone-backend"
     },
-    "sqltools.connections": [
-        {
-            "previewLimit": 50,
-            "driver": "SQLite",
-            "name": "Proyecto CAPSTONE",
-            "group": "Proyecto CAPSTONE",
-            "database": "${workspaceFolder:backend}/data/database.db"
-        }
-    ],
-    "sqltools.useNodeRuntime": true
+    "python.analysis.typeCheckingMode": "strict",
 }

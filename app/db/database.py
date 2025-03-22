@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.security import SecurityScopes
 from pydantic import (AfterValidator, EmailStr, PositiveInt, ValidationError,
                       field_validator, model_validator)
-from sqlalchemy import Engine
+from sqlalchemy import Engine, Text
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
@@ -16,11 +16,11 @@ from app.db.datatypes import (BeforeTodayDate, GoogleMapsURL, Password,
 from app.helpers.dateAndTime import get_quito_time
 from app.helpers.validations import (is_valid_ecuadorian_id,
                                      is_valid_ecuadorian_passport_number)
-from app.models.TypeCapacity import TypeCapacity
 from app.models.Gender import Gender
 from app.models.Reaction import Reaction
 from app.models.Role import Role
 from app.models.Token import TokenData
+from app.models.TypeCapacity import TypeCapacity
 from app.models.TypeId import TypeId
 from app.security.security import oauth2_scheme, verify_password
 from app.settings.config import settings
@@ -356,6 +356,7 @@ class EventBase(SQLModel):
         description="Event name"
     )
     description: str = Field(
+        sa_type=Text,
         title="Description",
         description="Event description"
     )
@@ -660,7 +661,6 @@ class RegistrationBase(SQLModel):
         default=None,
         foreign_key="assistant.user_id",
         primary_key=True,
-        nullable=True,
 
         title="Companion ID",
         description="Foreign key to Companion table"
@@ -675,17 +675,11 @@ class Registration(RegistrationBase, table=True):
         title="Created At",
         description="Registration creation date and time, in Quito timezone"
     )
-    attended: bool = Field(
-        default=False,
-
-        title="Attended",
-        description="Attendance status"
-    )
     attendance_time: datetime | None = Field(
         default=None,
 
         title="Attendance Time",
-        description="Time of attendance"
+        description="Time of attendance if this value is None, the user did not attend the event"
     )
     reaction: Reaction = Field(
         default=Reaction.NO_REACTION,
@@ -704,7 +698,7 @@ class Registration(RegistrationBase, table=True):
     assistant: User = Relationship(
         back_populates="registrations_as_assistant",
     )
-    companion: Assistant | None = Relationship(
+    companion: Assistant = Relationship(
         back_populates="registrations_as_companion",
     )
     event: Event = Relationship(
@@ -716,10 +710,6 @@ class RegistrationPublic(RegistrationBase):
     created_at: datetime = Field(
         title="Created At",
         description="Registration creation date and time, in Quito timezone"
-    )
-    attended: bool = Field(
-        title="Attended",
-        description="Attendance status"
     )
     attendance_time: datetime | None = Field(
         title="Attendance Time",
@@ -741,11 +731,6 @@ class RegistrationUpdate(SQLModel):
         default=None,
         title="Registration Date",
         description="Date of registration"
-    )
-    attended: bool | None = Field(
-        default=None,
-        title="Attended",
-        description="Attendance status"
     )
     reaction: int | None = Field(
         default=None,
