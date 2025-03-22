@@ -33,7 +33,7 @@ This project is a FastAPI-based application that provides user authentication an
     or
 
     ```sh
-    pip install "fastapi[all]" PyJWT bcrypt Faker sqlmodel deepface ipykernel pytest isort tf-keras "logfire[fastapi]" pymysql cryptography
+    pip install "fastapi[all]" PyJWT bcrypt Faker sqlmodel deepface ipykernel pytest isort tf-keras "logfire[fastapi]" pymysql cryptography "logfire[sqlalchemy]"
     ```
 
 4. **Add the `.env` file:**

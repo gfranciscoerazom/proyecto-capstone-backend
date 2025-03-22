@@ -12,14 +12,14 @@ This module contains the following things:
 - middlewares: Middlewares that add custom headers to the HTTP response.
 - Entrypoint: The main entrypoint for the application.
 """
-from io import StringIO
 import pathlib as pl
 import time
+from io import StringIO
 from typing import Annotated, Any, Callable
 
 import logfire
-import requests
 import pandas as pd
+import requests
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.concurrency import asynccontextmanager
@@ -209,6 +209,7 @@ logfire.configure(
     ),
 )
 logfire.instrument_fastapi(app, capture_headers=True)
+logfire.instrument_sqlalchemy(engine=engine)
 
 
 # region Routers

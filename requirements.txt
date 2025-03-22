@@ -9,5 +9,6 @@ pytest
 isort
 tf-keras
 logfire[fastapi]
+logfire[sqlalchemy]
 pymysql
 cryptography
