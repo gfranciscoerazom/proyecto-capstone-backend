@@ -4,4 +4,5 @@
         "projectKey": "gfranciscoerazom_proyecto-capstone-backend"
     },
     "python.analysis.typeCheckingMode": "strict",
+    "python.envFile": "${workspaceFolder}/.env",
 }

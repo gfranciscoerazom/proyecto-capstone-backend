@@ -42,6 +42,11 @@ class Settings(BaseSettings):
 
     Settings for the application that are loaded from the environment variables.
     """
+    ENVIRONMENT: Final[str] = Field(
+        title="Environment",
+        description="Environment in which the application is running",
+        examples=["development", "production"],
+    )
     SECRET_KEY: Final[str] = Field(
         title="Secret Key",
         description="Secret key for JWT token",
@@ -90,7 +95,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=Path.cwd() / ".env",
-        env_file_encoding='utf-8'
+        env_file_encoding='utf-8',
     )
 # endregion
 

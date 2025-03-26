@@ -77,27 +77,30 @@ async def lifespan(app: FastAPI):
             session.add(admin_user)
             session.commit()
 
-            tables_urls = (
-                # Organizers
-                ("user", "https://api.mockaroo.com/api/e70b53c0?count=29&key=f4035dc0"),
-                # Events
-                ("event", "https://api.mockaroo.com/api/d4e79e50?count=250&key=f4035dc0"),
-                # Events Dates
-                ("eventdate", "https://api.mockaroo.com/api/1fafe150?count=1000&key=f4035dc0"),
-                # Staff
-                ("user", "https://api.mockaroo.com/api/64205490?count=50&key=f4035dc0"),
-                # Assistants
-                ("user", "https://api.mockaroo.com/api/db4b6610?count=1000&key=f4035dc0"),
-                # Assistants extra data
-                ("assistant", "https://api.mockaroo.com/api/af230500?count=1000&key=f4035dc0"),
-                # Registration
-                ("registration", "https://api.mockaroo.com/api/e851c8c0?count=1000&key=f4035dc0"),
-            )
+            if settings.ENVIRONMENT == "development":
+                # Populate the database with mock data
+                tables_urls = (
+                    # Organizers
+                    ("user", "https://api.mockaroo.com/api/e70b53c0?count=29&key=f4035dc0"),
+                    # Events
+                    ("event", "https://api.mockaroo.com/api/d4e79e50?count=250&key=f4035dc0"),
+                    # Events Dates
+                    ("eventdate", "https://api.mockaroo.com/api/1fafe150?count=1000&key=f4035dc0"),
+                    # Staff
+                    ("user", "https://api.mockaroo.com/api/64205490?count=50&key=f4035dc0"),
+                    # Assistants
+                    ("user", "https://api.mockaroo.com/api/db4b6610?count=1000&key=f4035dc0"),
+                    # Assistants extra data
+                    ("assistant", "https://api.mockaroo.com/api/af230500?count=1000&key=f4035dc0"),
+                    # Registration
+                    ("registration", "https://api.mockaroo.com/api/e851c8c0?count=1000&key=f4035dc0"),
+                )
 
-            for table, url in tables_urls:
-                response = requests.get(url)
-                df = pd.read_csv(StringIO(response.text))  # type: ignore
-                df.to_sql(table, con=engine, if_exists="append", index=False)
+                for table, url in tables_urls:
+                    response = requests.get(url)
+                    df = pd.read_csv(StringIO(response.text))  # type: ignore
+                    df.to_sql(table, con=engine,
+                              if_exists="append", index=False)
 
     yield
 

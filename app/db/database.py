@@ -25,16 +25,18 @@ from app.models.TypeId import TypeId
 from app.security.security import oauth2_scheme, verify_password
 from app.settings.config import settings
 
-# region settings
-connect_args = {"check_same_thread": False}
-# endregion
-
 # region engine
-engine: Engine = create_engine(
-    settings.DATABASE_URL,
-    echo=True,
-    connect_args=connect_args
-)
+if "sqlite" in settings.DATABASE_URL:
+    engine: Engine = create_engine(
+        settings.DATABASE_URL,
+        echo=True,
+        connect_args={"check_same_thread": False}
+    )
+else:
+    engine: Engine = create_engine(
+        settings.DATABASE_URL,
+        echo=True
+    )
 # endregion
 
 
