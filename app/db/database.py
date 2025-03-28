@@ -180,6 +180,28 @@ class AssistantUpdate(SQLModel):
         description="Assistant face photo"
     )
 
+# region StaffEventLink
+
+
+class StaffEventLink(SQLModel, table=True):
+    """Staff-Event link database model."""
+    staff_id: int | None = Field(
+        default=None,
+        foreign_key="user.id",
+        primary_key=True,
+
+        title="Staff ID",
+        description="Foreign key to User table"
+    )
+    event_id: int | None = Field(
+        default=None,
+        foreign_key="event.id",
+        primary_key=True,
+
+        title="Event ID",
+        description="Foreign key to Event table"
+    )
+
 
 # region User
 
@@ -248,6 +270,10 @@ class User(UserBase, table=True):
     )
     registrations_as_assistant: list["Registration"] = Relationship(
         back_populates="assistant",
+    )
+    staffed_events: list["Event"] = Relationship(
+        back_populates="staff",
+        link_model=StaffEventLink
     )
 
     @model_validator(mode="after")
@@ -430,6 +456,10 @@ class Event(EventBase, table=True):
     )
     registrations: list["Registration"] = Relationship(
         back_populates="event"
+    )
+    staff: list["User"] = Relationship(
+        back_populates="staffed_events",
+        link_model=StaffEventLink
     )
 
     @field_validator("organizer_id", mode="after")
@@ -638,6 +668,7 @@ class EventPublicWithEventDate(EventPublic):
         list[EventDatePublic],
         AfterValidator(lambda x: sorted(x))
     ] = []
+    staff: list[UserPublic] = []
 
 
 # region Registration
