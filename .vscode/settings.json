@@ -5,4 +5,5 @@
     },
     "python.analysis.typeCheckingMode": "strict",
     "python.envFile": "${workspaceFolder}/.env",
+    "python.analysis.supportDocstringTemplate": true,
 }
