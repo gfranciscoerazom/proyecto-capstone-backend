@@ -30,5 +30,9 @@
     [
         "staffeventlink",
         "https://api.mockaroo.com/api/308b31f0?count=500&key=f4035dc0"
+    ],
+    [
+        "attendance",
+        "https://api.mockaroo.com/api/3f1cee50?count=1000&key=f4035dc0"
     ]
 ]

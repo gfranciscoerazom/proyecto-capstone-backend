@@ -197,7 +197,7 @@ async def get_assistants_by_image(
     images_df = DeepFace.find(  # type: ignore
         img_path=str(temp_image_path),
         db_path=str(pl.Path("./data/people_imgs")),
-        model_name="Facenet512",
+        model_name="Facenet",
         detector_backend="yunet",
     )
 

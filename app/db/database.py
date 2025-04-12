@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.security import SecurityScopes
 from pydantic import (AfterValidator, EmailStr, PositiveInt, ValidationError,
                       field_validator, model_validator)
-from sqlalchemy import Engine, Text
+from sqlalchemy import Engine, Text, UniqueConstraint
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
@@ -540,6 +540,62 @@ class EventUpdate(SQLModel):
         default=None, title="Organizer ID", description="Organizer User ID")
 
 
+# region Attendance
+class Attendance(SQLModel, table=True):
+    """Class that links EventDate and Registration. This link represents the
+    attendance of a user to an event date.
+
+    :var event_date_id: Foreign key to EventDate table. This value can be filled
+        automatically when the object is created with the **event_date**
+        attribute.
+    :vartype event_date_id: int | None
+
+    :var registration_id: Foreign key to Registration table. This value can be
+        filled automatically when the object is created with the **registration**
+        attribute.
+    :vartype registration_id: int | None
+
+    :var arrival_time: Time of arrival of the assistant to the event date.
+    :vartype arrival_time: time
+
+    :var event_date: EventDate that the assistant is attending.
+    :vartype event_date: EventDate
+
+    :var registration: Registration of the assistant.
+    :vartype registration: Registration
+    """
+
+    event_date_id: int | None = Field(
+        default=None,
+        foreign_key="eventdate.id",
+        primary_key=True,
+
+        title="Foreign Key to EventDate",
+        description="Foreign key to EventDate table (automatically filled)"
+    )
+    registration_id: int | None = Field(
+        default=None,
+        foreign_key="registration.id",
+        primary_key=True,
+
+        title="Foreign Key to Registration",
+        description="Foreign key to Registration table (automatically filled)"
+    )
+    arrival_time: time = Field(
+        default_factory=get_quito_time,
+
+        title="Arrival Time of the Assistant",
+        description="Time of arrival of the assistant to the event date"
+    )
+
+    event_date: "EventDate" = Relationship(
+        back_populates="registration_link"
+    )
+    registration: "Registration" = Relationship(
+        back_populates="event_dates_link"
+    )
+
+
 # region EventDate
 
 
@@ -628,6 +684,9 @@ class EventDate(EventDateBase, table=True):
     event: Event = Relationship(
         back_populates="event_dates"
     )
+    registration_link: list[Attendance] = Relationship(
+        back_populates="event_date"
+    )
 
 
 class EventDatePublic(EventDateBase):
@@ -674,10 +733,16 @@ class EventPublicWithEventDate(EventPublic):
 # region Registration
 class RegistrationBase(SQLModel):
     """Base class for Registration models."""
+    id: int | None = Field(
+        default=None,
+        primary_key=True,
+
+        title="ID",
+        description="Registration ID"
+    )
     event_id: int | None = Field(
         default=None,
         foreign_key="event.id",
-        primary_key=True,
 
         title="Event ID",
         description="Foreign key to Event table"
@@ -685,7 +750,6 @@ class RegistrationBase(SQLModel):
     assistant_id: int | None = Field(
         default=None,
         foreign_key="user.id",
-        primary_key=True,
 
         title="User ID",
         description="Foreign key to User table"
@@ -693,7 +757,6 @@ class RegistrationBase(SQLModel):
     companion_id: int | None = Field(
         default=None,
         foreign_key="assistant.user_id",
-        primary_key=True,
 
         title="Companion ID",
         description="Foreign key to Companion table"
@@ -707,12 +770,6 @@ class Registration(RegistrationBase, table=True):
 
         title="Created At",
         description="Registration creation date and time, in Quito timezone"
-    )
-    attendance_time: datetime | None = Field(
-        default=None,
-
-        title="Attendance Time",
-        description="Time of attendance if this value is None, the user did not attend the event"
     )
     reaction: Reaction = Field(
         default=Reaction.NO_REACTION,
@@ -737,16 +794,19 @@ class Registration(RegistrationBase, table=True):
     event: Event = Relationship(
         back_populates="registrations"
     )
+    event_dates_link: list[Attendance] = Relationship(
+        back_populates="registration"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("event_id", "assistant_id", "companion_id",),
+    )
 
 
 class RegistrationPublic(RegistrationBase):
     created_at: datetime = Field(
         title="Created At",
         description="Registration creation date and time, in Quito timezone"
-    )
-    attendance_time: datetime | None = Field(
-        title="Attendance Time",
-        description="Time of attendance"
     )
     reaction: int = Field(
         title="Reaction",

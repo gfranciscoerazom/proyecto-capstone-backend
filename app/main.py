@@ -87,8 +87,10 @@ async def lifespan(app: FastAPI):
                     response = requests.get(url)
                     df = pd.read_csv(StringIO(response.text))  # type: ignore
                     if table == "staffeventlink":
-                        # Eliminar las filas duplicadas
                         df.drop_duplicates(inplace=True)
+                    elif table == "attendance":
+                        df.drop_duplicates(
+                            subset=["event_date_id", "registration_id"], inplace=True)
                     df.to_sql(table, con=engine,
                               if_exists="append", index=False)
 

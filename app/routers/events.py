@@ -8,8 +8,8 @@ from fastapi import (APIRouter, Body, Form, HTTPException, Path, Security,
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
 
-from app.db.database import (Event, EventCreate, EventDate, EventDateCreate,
-                             EventPublicWithEventDate, SessionDependency, User,
+from app.db.database import (Attendance, Event, EventCreate, EventDate, EventDateCreate,
+                             EventPublicWithEventDate, Registration, SessionDependency, User,
                              get_current_active_user)
 from app.helpers.files import safe_path_join
 from app.helpers.validations import are_unique_dates, save_image
@@ -322,5 +322,83 @@ async def add_event_date(
     session.commit()
     session.refresh(event)
     return event
+
+
+@router.post(
+    "/add/attendance/{event_date_id}/{registration_id}",
+    response_model=Attendance,
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.STAFF]
+        )
+    ],
+
+    summary="Add an attendance to an event",
+    response_description="The added attendance",
+)
+async def add_attendance(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event date ID",
+            description="The ID of the event date to add an attendance to.",
+        )
+    ],
+    registration_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Registration ID",
+            description="The ID of the registration to add an attendance to.",
+        )
+    ],
+    session: SessionDependency,
+) -> Attendance:
+    """
+    Endpoint to add an attendance to an event.
+
+    This endpoint allows users to register attendance for a specific event date by providing the event ID, event date ID, and registration ID.
+
+    Args:
+        event_date_id (PositiveInt): The ID of the event date to add attendance to.
+        registration_id (PositiveInt): The ID of the registration to add attendance for.
+        session (SessionDependency): The database session dependency.
+
+    Returns:
+        Attendance: The added attendance.
+
+    Raises:
+        HTTPException: If the event or event date is not found or the attendance could not be added.
+    """
+    if not (event_date := session.get(EventDate, event_date_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event date not found",
+        )
+
+    if not (registration := session.get(Registration, registration_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registration not found",
+        )
+
+    new_attendance: Attendance = Attendance(
+        event_date=event_date,
+        registration=registration,
+    )
+
+    session.add(new_attendance)
+    # session.commit()
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        ) from e
+    session.refresh(new_attendance)
+
+    return new_attendance
+
 
 # endregion
