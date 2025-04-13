@@ -12,11 +12,11 @@ This module contains the following things:
 - middlewares: Middlewares that add custom headers to the HTTP response.
 - Entrypoint: The main entrypoint for the application.
 """
+import json
 import pathlib as pl
 import time
 from io import StringIO
 from typing import Annotated, Any, Callable
-import json
 
 import logfire
 import pandas as pd

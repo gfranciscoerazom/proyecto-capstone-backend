@@ -4,10 +4,8 @@ from email.message import EmailMessage
 
 from fastapi.templating import Jinja2Templates
 
-from app.db.database import User
-from app.db.database import Event
+from app.db.database import Event, User
 from app.settings.config import settings
-
 
 templates = Jinja2Templates(directory="app/html/emails")
 

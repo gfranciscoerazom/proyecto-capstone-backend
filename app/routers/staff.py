@@ -8,7 +8,8 @@ from typing import Annotated
 import sqlalchemy
 from fastapi import APIRouter, Form, HTTPException, Security, status
 
-from app.db.database import (Event, EventPublicWithEventDate, SessionDependency, User, UserCreate, UserPublic,
+from app.db.database import (Event, EventPublicWithEventDate,
+                             SessionDependency, User, UserCreate, UserPublic,
                              get_current_active_user)
 from app.models.Role import Role
 from app.models.Scopes import Scopes

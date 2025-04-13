@@ -20,6 +20,7 @@ from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
 from app.security.security import get_password_hash
+from app.settings.config import settings
 
 router = APIRouter(
     prefix="/assistant",
@@ -197,7 +198,8 @@ async def get_assistants_by_image(
     images_df = DeepFace.find(  # type: ignore
         img_path=str(temp_image_path),
         db_path=str(pl.Path("./data/people_imgs")),
-        model_name="Facenet",
+        model_name=settings.FACE_RECOGNITION_AI_MODEL,
+        threshold=settings.FACE_RECOGNITION_AI_THRESHOLD,
         detector_backend="yunet",
     )
 

@@ -8,8 +8,9 @@ from fastapi import (APIRouter, Body, Form, HTTPException, Path, Security,
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
 
-from app.db.database import (Attendance, Event, EventCreate, EventDate, EventDateCreate,
-                             EventPublicWithEventDate, Registration, SessionDependency, User,
+from app.db.database import (Attendance, Event, EventCreate, EventDate,
+                             EventDateCreate, EventPublicWithEventDate,
+                             Registration, SessionDependency, User,
                              get_current_active_user)
 from app.helpers.files import safe_path_join
 from app.helpers.validations import are_unique_dates, save_image
