@@ -21,6 +21,7 @@ from app.models.Reaction import Reaction
 from app.models.Role import Role
 from app.models.Token import TokenData
 from app.models.TypeCapacity import TypeCapacity
+from app.models.TypeCompanion import TypeCompanion
 from app.models.TypeId import TypeId
 from app.security.security import oauth2_scheme, verify_password
 from app.settings.config import settings
@@ -613,6 +614,12 @@ class EventDateBase(SQLModel):
         title="End Time",
         description="Event end time"
     )
+    deleted: bool = Field(
+        default=False,
+
+        title="Deleted",
+        description="Event date deletion status"
+    )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, EventDateBase):
@@ -761,6 +768,35 @@ class RegistrationBase(SQLModel):
         title="Companion ID",
         description="Foreign key to Companion table"
     )
+    companion_type: TypeCompanion = Field(
+        title="Companion Type",
+        description="Type of companion (Zero/First/Second/Third grade)"
+    )
+
+    @model_validator(mode="after")
+    def validate_companion_type(self) -> Self:
+        """Method to validate the companion type.
+
+        This method verifies that if the assistant_id is the same as the
+        companion_id, the companion_type is ZERO_GRADE, otherwise, it raises a
+        ValueError.
+
+        :param self: The instance of the class being validated.
+        :type self:
+        :return: The instance of the class after validation.
+        :rtype: Self
+        """
+
+        if self.companion_id == self.assistant_id and self.companion_type != TypeCompanion.ZERO_GRADE:
+            raise ValueError(
+                "Companion ID must be the same as Assistant ID if the type is ZERO_GRADE."
+            )
+        if self.companion_id != self.assistant_id and self.companion_type == TypeCompanion.ZERO_GRADE:
+            raise ValueError(
+                "Companion ID must be different from Assistant ID if the type is not ZERO_GRADE."
+            )
+
+        return self
 
 
 class Registration(RegistrationBase, table=True):

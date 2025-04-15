@@ -19,6 +19,7 @@ from app.helpers.validations import save_user_image
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
+from app.models.TypeCompanion import TypeCompanion
 from app.security.security import get_password_hash
 from app.settings.config import settings
 
@@ -400,6 +401,7 @@ def register_to_event(
         event=event,
         assistant=current_user,
         companion=assistant,
+        companion_type=TypeCompanion.ZERO_GRADE
     )
 
     session.add(registration)
@@ -435,6 +437,13 @@ def register_companion_to_event(
         Form(
             title="Companion ID",
             description="The ID of the companion to register to the event",
+        )
+    ],
+    companion_type: Annotated[
+        TypeCompanion,
+        Form(
+            title="Companion type",
+            description="The type of the companion to register to the event",
         )
     ],
     session: SessionDependency,
@@ -482,6 +491,7 @@ def register_companion_to_event(
         event=event,
         assistant=current_user,
         companion=companion,
+        companion_type=companion_type,
     )
 
     session.add(registration)

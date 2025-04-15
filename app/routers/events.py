@@ -325,6 +325,53 @@ async def add_event_date(
     return event
 
 
+@router.delete(
+    "/date/{event_date_id}",
+    response_model=EventPublicWithEventDate,
+
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ORGANIZER]
+        )
+    ],
+    summary="Delete an event date",
+    response_description="The deleted event date",
+)
+async def delete_event_date(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event date ID",
+            description="The ID of the event date to be deleted.",
+        )
+    ],
+    session: SessionDependency,
+) -> Event:
+    """Endpoint to change to true the deleted parameter of an event date.
+
+    :param event_date_id: The ID of the event date to be marked as deleted.
+    :type event_date_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The updated event with the deleted status.
+    :rtype: Event
+    """
+
+    if not (event_date := session.get(EventDate, event_date_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event date not found",
+        )
+
+    event_date.deleted = True
+    session.add(event_date)
+    session.commit()
+    session.refresh(event_date)
+
+    return event_date.event
+
+
 @router.post(
     "/add/attendance/{event_date_id}/{registration_id}",
     response_model=Attendance,
