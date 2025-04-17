@@ -40,7 +40,7 @@ async def read_users_me(
         User,
         Security(
             get_current_active_user,
-            scopes=[Scopes.USER]
+            scopes=[Scopes.ORGANIZER]
         )
     ],
 ) -> User:

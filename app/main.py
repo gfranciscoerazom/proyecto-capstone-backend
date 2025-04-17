@@ -224,25 +224,14 @@ app.include_router(events.router)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
-    """
-    Endpoint to obtain an access token.
-
-    This endpoint allows users to obtain an access token by providing their
-    username and password. The token can then be used to authenticate subsequent
-    requests.
+    """Obtain an access token using username, password and scopes.
 
     \f
 
-    Args:
-        form_data (OAuth2PasswordRequestForm): The form data containing the
-            username and password.
-
-    Returns:
-        Token: An object containing the access token and token type.
-
-    Raises:
-        HTTPException: If the username or password is incorrect, an HTTP 401
-            Unauthorized error is raised.
+    :param form_data: The form data containing the username, password and scopes.
+    :type form_data: OAuth2PasswordRequestForm
+    :return: An object containing the access token and token type.
+    :rtype: Token
     """
     if not (
         user := authenticate_user(
@@ -258,7 +247,7 @@ async def login_for_access_token(
 
     allowed_scopes: set[Scopes] = user.role.get_allowed_scopes()
 
-    if not all(scope in allowed_scopes for scope in form_data.scopes):
+    if not any(scope in allowed_scopes for scope in form_data.scopes):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not enough permissions",
@@ -284,8 +273,10 @@ async def read_main():
     It handles GET requests to the root path ("/") and returns a JSON response 
     with a message "Hello World".
 
-    Returns:
-        dict: A dictionary containing the message "Hello World".
+    \f
+
+    :return: A JSON response with a message "Hello World".
+    :rtype: dict[str, str]
     """
     return {"msg": "Hello World"}
 
@@ -298,6 +289,15 @@ async def add_process_time_header(
     call_next: Callable[[Request], Any]
     # call_next: (Request) -> Any
 ):
+    """Middleware to add a custom header indicating the processing time of a request.
+
+    :param request: Description
+    :type request: Request
+    :param call_next: Description
+    :type call_next: 
+    :return: Description
+    :rtype: Any
+    """
     """
     Middleware to add a custom header indicating the processing time of a request.
 

@@ -41,7 +41,7 @@ async def read_users_me(
         User,
         Security(
             get_current_active_user,
-            scopes=[Scopes.USER]
+            scopes=[Scopes.ASSISTANT]
         )
     ],
 ) -> User:
@@ -363,7 +363,7 @@ def register_to_event(
         User,
         Security(
             get_current_active_user,
-            scopes=[Scopes.USER]
+            scopes=[Scopes.ASSISTANT]
         )
     ],
 ) -> Registration:
@@ -451,7 +451,7 @@ def register_companion_to_event(
         User,
         Security(
             get_current_active_user,
-            scopes=[Scopes.USER]
+            scopes=[Scopes.ASSISTANT]
         )
     ],
 ) -> Registration:
