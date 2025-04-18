@@ -141,6 +141,40 @@ def test_get_organizer_info():
     assert json_response["role"] == "organizer"
 
 
+def test_add_staff():
+    """Test the staff add endpoint with valid token.
+
+    The curl command to test this endpoint is:
+    curl -X 'POST' \\
+      'http://127.0.0.1:8000/staff/add' \\
+      -H 'accept: application/json' \\
+      -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkB1ZGxhLmVkdS5lYyIsInNjb3BlcyI6WyJvcmdhbml6ZXIiXSwiZXhwIjoxNzQ0OTM0OTUwfQ.iEvVW1-lu1SZCmizTcvP-VRaTw8NUw9uuYLlKsYKfJc' \\
+      -H 'Content-Type: application/x-www-form-urlencoded' \\
+      -d 'email=BobEsponja%40udla.edu.ec&first_name=Bob&last_name=Esponja&password=Dinero666%40'
+  """
+    response = client.post(
+        "/staff/add",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        data={
+            "email": "Patricio@udla.edu.ec",
+            "first_name": "Patricio",
+            "last_name": "Estrella",
+            "password": "Dinero555@"
+        }
+    )
+
+    assert response.status_code == 200
+    json_response = response.json()
+    assert json_response["email"] == "Patricio@udla.edu.ec"
+    assert json_response["first_name"] == "Patricio"
+    assert json_response["last_name"] == "Estrella"
+    assert json_response["role"] == "staff"
+
+
 # curl -X 'POST' \
 #   'http://127.0.0.1:8000/assistant/add' \
 #   -H 'accept: application/json' \
