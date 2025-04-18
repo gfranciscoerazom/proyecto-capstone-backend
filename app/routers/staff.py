@@ -48,17 +48,16 @@ async def add_user(
     session: SessionDependency,
 ) -> User:
     """
-    Add a new user of type organizer or staff.
+    Adds a new user of type staff into the database.
+    
+    \f 
 
-    This endpoint allows an authenticated user with the appropriate permissions
-    to add a new user to the system.
-
-    Args:
-        user (UserCreate): The user details to create a new user.
-        current_user (User): The current active user, obtained from the dependency injection.
-
-    Returns:
-        UserPublic: The newly created user.
+    :param user: Information about the user to be added.
+    :type UserCreate: 
+    :param session: Database session dependency to connect to the database.
+    :type session: SessionDependency
+    :return: The information of the user that was added to the database.
+    :rtype: User
     """
     hashed_password: bytes = get_password_hash(user.password)
     extra_data: dict[str, bytes | Role] = {
