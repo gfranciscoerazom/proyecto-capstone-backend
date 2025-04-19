@@ -27,6 +27,7 @@ router = APIRouter(
 @router.post(
     "/add",
     response_model=UserPublic,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[
         Security(
             get_current_active_user,
@@ -49,7 +50,7 @@ async def add_user(
 ) -> User:
     """
     Adds a new user of type staff into the database.
-    
+
     \f 
 
     :param user: Information about the user to be added.

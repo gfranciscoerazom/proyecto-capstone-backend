@@ -8,8 +8,7 @@ from typing import Annotated, Any
 
 import logfire
 import sqlalchemy
-from fastapi import (APIRouter, Form, HTTPException, Query, Security,
-                     status)
+from fastapi import APIRouter, Form, HTTPException, Query, Security, status
 
 from app.db.database import (SessionDependency, User, UserCreate, UserPublic,
                              get_current_active_user)

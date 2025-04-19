@@ -27,7 +27,7 @@ from fastapi.concurrency import asynccontextmanager
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
-from app.db.database import (User, authenticate_user, create_db_and_tables,
+from app.db.database import (SessionDependency, User, create_db_and_tables,
                              engine)
 from app.models.Role import Role
 from app.models.Scopes import Scopes
@@ -223,6 +223,7 @@ app.include_router(events.router)
 )
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    session: SessionDependency
 ) -> Token:
     """Obtain an access token using username, password and scopes.
 
@@ -230,15 +231,16 @@ async def login_for_access_token(
 
     :param form_data: The form data containing the username, password and scopes.
     :type form_data: OAuth2PasswordRequestForm
+
+    :param session: The database session to make queries.
+    :type session: SessionDependency
+
     :return: An object containing the access token and token type.
     :rtype: Token
     """
-    if not (
-        user := authenticate_user(
-            email=form_data.username,
-            password=form_data.password
-        )
-    ):
+    if not (user := session.exec(
+        select(User).where(User.email == form_data.username)
+    ).first()) or not user.verify_password(form_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -249,7 +251,7 @@ async def login_for_access_token(
 
     if not any(scope in allowed_scopes for scope in form_data.scopes):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions",
             headers={
                 "WWW-Authenticate": f'Bearer scope="{", ".join(scope.value for scope in allowed_scopes)}"'

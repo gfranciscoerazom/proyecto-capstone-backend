@@ -1,5 +1,5 @@
 from datetime import date, datetime, time
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Self
 from uuid import UUID
 
 import jwt
@@ -291,6 +291,10 @@ class User(UserBase, table=True):
                         "Organizer or staff email must be from UDLA domain")
 
         return self
+
+    def verify_password(self, password: str) -> bool:
+        """Verify the password of the user."""
+        return verify_password(password, self.hashed_password)
 
 
 class UserPublic(UserBase):
@@ -919,13 +923,6 @@ def get_user(
         if user_id:
             return session.get(User, user_id)
     return None
-
-
-def authenticate_user(email: EmailStr, password: str) -> User | Literal[False]:
-    """Authenticates user by email and password."""
-    if not (user := get_user(email=email)):
-        return False
-    return user if verify_password(password, user.hashed_password) else False
 
 
 def get_current_user(
