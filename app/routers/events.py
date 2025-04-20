@@ -1,15 +1,17 @@
+import datetime
 import pathlib as pl
 from typing import Annotated, Any
 from uuid import UUID
 
 import sqlalchemy
-from fastapi import (APIRouter, Body, Form, HTTPException, Path, Security,
+from sqlmodel import select
+from fastapi import (APIRouter, Body, Form, HTTPException, Path, Query, Security,
                      status)
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
 
 from app.db.database import (Attendance, Event, EventCreate, EventDate,
-                             EventDateCreate, EventPublicWithEventDate,
+                             EventDateCreate, EventPublicWithEventDate, EventPublicWithNoDeletedEventDate,
                              Registration, SessionDependency, User,
                              get_current_active_user)
 from app.helpers.files import safe_path_join
@@ -23,6 +25,53 @@ router = APIRouter(
     tags=[Tags.events],
 )
 
+
+@router.get(
+    "/upcoming",
+    response_model=list[EventPublicWithNoDeletedEventDate],
+
+    summary="Get upcoming events",
+    response_description="A list of upcoming events with their dates, this event are ordered by date, from the closest to the farthest",
+)
+async def get_upcoming_events(
+    session: SessionDependency,
+    quantity: Annotated[
+        int | None,
+        Query(
+            title="Quantity",
+            description="The number of upcoming events to retrieve. If not provided, all upcoming events will be returned.",
+            ge=0,
+        )
+    ] = None,
+) -> list[Event]:
+    """
+    Endpoint to get a list of upcoming events.
+
+    This endpoint allows users to retrieve a list of upcoming events, ordered by it first date from the closest to the farthest.
+
+    \f
+
+    :param session: The database session dependency to interact with the database.
+    :type session: SessionDependency
+
+    :param quantity: The number of upcoming events to retrieve.
+    :type quantity: int | None
+    """
+    events = session.exec(
+        select(Event)
+        .join(EventDate)
+        .where(
+            EventDate.day_date >= datetime.datetime.now(), EventDate.deleted == False
+        )
+        .distinct()
+    ).all()
+
+    events = sorted(events, key=lambda event: sorted(event.event_dates)[0])
+
+    if quantity:
+        events = events[:quantity]
+
+    return events
 # region Endpoints
 
 

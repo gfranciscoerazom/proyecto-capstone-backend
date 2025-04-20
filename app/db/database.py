@@ -736,9 +736,20 @@ class EventDateUpdate(SQLModel):
 class EventPublicWithEventDate(EventPublic):
     event_dates: Annotated[
         list[EventDatePublic],
-        AfterValidator(lambda x: sorted(x))
+        AfterValidator(lambda event_date_list: sorted(event_date_list))
     ] = []
     staff: list[UserPublic] = []
+
+
+class EventPublicWithNoDeletedEventDate(EventPublic):
+    event_dates: Annotated[
+        list[EventDatePublic],
+        AfterValidator(
+            lambda event_date_list: sorted(
+                (event_date for event_date in event_date_list if not event_date.deleted)
+            )
+        )
+    ] = []
 
 
 # region Registration
