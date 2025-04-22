@@ -11,7 +11,7 @@ from sqlalchemy import Engine, Text, UniqueConstraint
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
-from app.db.datatypes import (BeforeTodayDate, GoogleMapsURL, Password,
+from app.db.datatypes import (BeforeTodayDate, GoogleMapsURL, Password, PersonName,
                               PhoneNumber, TermsAndConditions, UpperStr)
 from app.helpers.dateAndTime import get_quito_time
 from app.helpers.validations import (is_valid_ecuadorian_id,
@@ -219,13 +219,13 @@ class UserBase(SQLModel):
         title="Email address",
         description="User email address (used for login)",
     )
-    first_name: str = Field(
+    first_name: PersonName = Field(
         min_length=2,
 
         title="First Name",
         description="User first name",
     )
-    last_name: str = Field(
+    last_name: PersonName = Field(
         min_length=2,
 
         title="Last Name",

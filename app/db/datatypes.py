@@ -3,7 +3,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator
 
-from app.helpers.validations import (is_accepted_terms, is_after_today,
+from app.helpers.validations import (is_a_person_name, is_accepted_terms, is_after_today,
                                      is_before_today, is_valid_google_maps_url,
                                      is_valid_phone_number, password_validator)
 
@@ -42,4 +42,9 @@ GoogleMapsURL = Annotated[
 UpperStr = Annotated[
     str,
     AfterValidator(str.upper)
+]
+
+PersonName = Annotated[
+    str,
+    AfterValidator(is_a_person_name)
 ]
