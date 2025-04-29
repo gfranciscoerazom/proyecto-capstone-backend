@@ -10,7 +10,7 @@ jobs:
       - python/install-packages
       - run:
           name: Run tests
-          command: pytest
+          command: pytest --junitxml=junit.xml
       - store_test_results:
           path: junit.xml
   flake8:
@@ -31,4 +31,6 @@ workflows:
   build-and-test:
     jobs:
       - test-python
-      - flake8
+      - flake8:
+          requires:
+            - test-python
