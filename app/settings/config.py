@@ -28,9 +28,8 @@ easily accessible across the application.
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Final
+from typing import Final
 
-from fastapi import Depends
 from pydantic import EmailStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -42,6 +41,11 @@ class Settings(BaseSettings):
 
     Settings for the application that are loaded from the environment variables.
     """
+    ENVIRONMENT: Final[str] = Field(
+        title="Environment",
+        description="Environment in which the application is running",
+        examples=["development", "production"],
+    )
     SECRET_KEY: Final[str] = Field(
         title="Secret Key",
         description="Secret key for JWT token",
@@ -87,10 +91,23 @@ class Settings(BaseSettings):
         description="Token to connect to the system",
         examples=["xxxx_xx_xx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
     )
+    FACE_RECOGNITION_AI_MODEL: Final[str] = Field(
+        title="Face Recognition AI Model",
+        description="Model for face recognition",
+        examples=["VGG-Face", "Facenet", "Facenet512", "OpenFace", "DeepFace",
+                  "DeepID", "ArcFace", "Dlib", "SFace", "GhostFaceNet",
+                  "Buffalo_L",],
+    )
+    FACE_RECOGNITION_AI_THRESHOLD: float | None = Field(
+        default=None,
+        title="Face Recognition AI Threshold",
+        description="Threshold for face recognition",
+        examples=[0.5, 0.6, 0.7],
+    )
 
     model_config = SettingsConfigDict(
         env_file=Path.cwd() / ".env",
-        env_file_encoding='utf-8'
+        env_file_encoding='utf-8',
     )
 # endregion
 
@@ -105,11 +122,14 @@ def get_settings() -> Settings:
         Settings: The settings for the application.
     """
     return Settings()  # type: ignore
+
+
+def update_settings():
+    settings = get_settings()
+    settings.__init__()  # type: ignore
 # endregion
 
 
 # region variables
 settings: Settings = get_settings()
-
-SettingsDependency = Annotated[Settings, Depends(get_settings)]
 # endregion

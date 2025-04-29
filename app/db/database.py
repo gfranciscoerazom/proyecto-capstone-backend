@@ -1,5 +1,5 @@
 from datetime import date, datetime, time
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Self
 from uuid import UUID
 
 import jwt
@@ -7,11 +7,11 @@ from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.security import SecurityScopes
 from pydantic import (AfterValidator, EmailStr, PositiveInt, ValidationError,
                       field_validator, model_validator)
-from sqlalchemy import Engine, Text
+from sqlalchemy import Engine, Text, UniqueConstraint
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
-from app.db.datatypes import (BeforeTodayDate, GoogleMapsURL, Password,
+from app.db.datatypes import (BeforeTodayDate, GoogleMapsURL, Password, PersonName,
                               PhoneNumber, TermsAndConditions, UpperStr)
 from app.helpers.dateAndTime import get_quito_time
 from app.helpers.validations import (is_valid_ecuadorian_id,
@@ -21,20 +21,23 @@ from app.models.Reaction import Reaction
 from app.models.Role import Role
 from app.models.Token import TokenData
 from app.models.TypeCapacity import TypeCapacity
+from app.models.TypeCompanion import TypeCompanion
 from app.models.TypeId import TypeId
 from app.security.security import oauth2_scheme, verify_password
 from app.settings.config import settings
 
-# region settings
-connect_args = {"check_same_thread": False}
-# endregion
-
 # region engine
-engine: Engine = create_engine(
-    settings.DATABASE_URL,
-    echo=True,
-    connect_args=connect_args
-)
+if "sqlite" in settings.DATABASE_URL:
+    engine: Engine = create_engine(
+        settings.DATABASE_URL,
+        echo=True,
+        connect_args={"check_same_thread": False}
+    )
+else:
+    engine: Engine = create_engine(
+        settings.DATABASE_URL,
+        echo=True
+    )
 # endregion
 
 
@@ -178,6 +181,28 @@ class AssistantUpdate(SQLModel):
         description="Assistant face photo"
     )
 
+# region StaffEventLink
+
+
+class StaffEventLink(SQLModel, table=True):
+    """Staff-Event link database model."""
+    staff_id: int | None = Field(
+        default=None,
+        foreign_key="user.id",
+        primary_key=True,
+
+        title="Staff ID",
+        description="Foreign key to User table"
+    )
+    event_id: int | None = Field(
+        default=None,
+        foreign_key="event.id",
+        primary_key=True,
+
+        title="Event ID",
+        description="Foreign key to Event table"
+    )
+
 
 # region User
 
@@ -194,13 +219,13 @@ class UserBase(SQLModel):
         title="Email address",
         description="User email address (used for login)",
     )
-    first_name: str = Field(
+    first_name: PersonName = Field(
         min_length=2,
 
         title="First Name",
         description="User first name",
     )
-    last_name: str = Field(
+    last_name: PersonName = Field(
         min_length=2,
 
         title="Last Name",
@@ -247,6 +272,10 @@ class User(UserBase, table=True):
     registrations_as_assistant: list["Registration"] = Relationship(
         back_populates="assistant",
     )
+    staffed_events: list["Event"] = Relationship(
+        back_populates="staff",
+        link_model=StaffEventLink
+    )
 
     @model_validator(mode="after")
     def validate_email_by_role(self) -> Self:
@@ -262,6 +291,10 @@ class User(UserBase, table=True):
                         "Organizer or staff email must be from UDLA domain")
 
         return self
+
+    def verify_password(self, password: str) -> bool:
+        """Verify the password of the user."""
+        return verify_password(password, self.hashed_password)
 
 
 class UserPublic(UserBase):
@@ -429,6 +462,10 @@ class Event(EventBase, table=True):
     registrations: list["Registration"] = Relationship(
         back_populates="event"
     )
+    staff: list["User"] = Relationship(
+        back_populates="staffed_events",
+        link_model=StaffEventLink
+    )
 
     @field_validator("organizer_id", mode="after")
     @classmethod
@@ -508,6 +545,62 @@ class EventUpdate(SQLModel):
         default=None, title="Organizer ID", description="Organizer User ID")
 
 
+# region Attendance
+class Attendance(SQLModel, table=True):
+    """Class that links EventDate and Registration. This link represents the
+    attendance of a user to an event date.
+
+    :var event_date_id: Foreign key to EventDate table. This value can be filled
+        automatically when the object is created with the **event_date**
+        attribute.
+    :vartype event_date_id: int | None
+
+    :var registration_id: Foreign key to Registration table. This value can be
+        filled automatically when the object is created with the **registration**
+        attribute.
+    :vartype registration_id: int | None
+
+    :var arrival_time: Time of arrival of the assistant to the event date.
+    :vartype arrival_time: time
+
+    :var event_date: EventDate that the assistant is attending.
+    :vartype event_date: EventDate
+
+    :var registration: Registration of the assistant.
+    :vartype registration: Registration
+    """
+
+    event_date_id: int | None = Field(
+        default=None,
+        foreign_key="eventdate.id",
+        primary_key=True,
+
+        title="Foreign Key to EventDate",
+        description="Foreign key to EventDate table (automatically filled)"
+    )
+    registration_id: int | None = Field(
+        default=None,
+        foreign_key="registration.id",
+        primary_key=True,
+
+        title="Foreign Key to Registration",
+        description="Foreign key to Registration table (automatically filled)"
+    )
+    arrival_time: time = Field(
+        default_factory=get_quito_time,
+
+        title="Arrival Time of the Assistant",
+        description="Time of arrival of the assistant to the event date"
+    )
+
+    event_date: "EventDate" = Relationship(
+        back_populates="registration_link"
+    )
+    registration: "Registration" = Relationship(
+        back_populates="event_dates_link"
+    )
+
+
 # region EventDate
 
 
@@ -524,6 +617,12 @@ class EventDateBase(SQLModel):
     end_time: time = Field(
         title="End Time",
         description="Event end time"
+    )
+    deleted: bool = Field(
+        default=False,
+
+        title="Deleted",
+        description="Event date deletion status"
     )
 
     def __eq__(self, other: object) -> bool:
@@ -596,6 +695,9 @@ class EventDate(EventDateBase, table=True):
     event: Event = Relationship(
         back_populates="event_dates"
     )
+    registration_link: list[Attendance] = Relationship(
+        back_populates="event_date"
+    )
 
 
 class EventDatePublic(EventDateBase):
@@ -634,17 +736,35 @@ class EventDateUpdate(SQLModel):
 class EventPublicWithEventDate(EventPublic):
     event_dates: Annotated[
         list[EventDatePublic],
-        AfterValidator(lambda x: sorted(x))
+        AfterValidator(lambda event_date_list: sorted(event_date_list))
+    ] = []
+    staff: list[UserPublic] = []
+
+
+class EventPublicWithNoDeletedEventDate(EventPublic):
+    event_dates: Annotated[
+        list[EventDatePublic],
+        AfterValidator(
+            lambda event_date_list: sorted(
+                (event_date for event_date in event_date_list if not event_date.deleted)
+            )
+        )
     ] = []
 
 
 # region Registration
 class RegistrationBase(SQLModel):
     """Base class for Registration models."""
+    id: int | None = Field(
+        default=None,
+        primary_key=True,
+
+        title="ID",
+        description="Registration ID"
+    )
     event_id: int | None = Field(
         default=None,
         foreign_key="event.id",
-        primary_key=True,
 
         title="Event ID",
         description="Foreign key to Event table"
@@ -652,7 +772,6 @@ class RegistrationBase(SQLModel):
     assistant_id: int | None = Field(
         default=None,
         foreign_key="user.id",
-        primary_key=True,
 
         title="User ID",
         description="Foreign key to User table"
@@ -660,11 +779,39 @@ class RegistrationBase(SQLModel):
     companion_id: int | None = Field(
         default=None,
         foreign_key="assistant.user_id",
-        primary_key=True,
 
         title="Companion ID",
         description="Foreign key to Companion table"
     )
+    companion_type: TypeCompanion = Field(
+        title="Companion Type",
+        description="Type of companion (Zero/First/Second/Third grade)"
+    )
+
+    @model_validator(mode="after")
+    def validate_companion_type(self) -> Self:
+        """Method to validate the companion type.
+
+        This method verifies that if the assistant_id is the same as the
+        companion_id, the companion_type is ZERO_GRADE, otherwise, it raises a
+        ValueError.
+
+        :param self: The instance of the class being validated.
+        :type self:
+        :return: The instance of the class after validation.
+        :rtype: Self
+        """
+
+        if self.companion_id == self.assistant_id and self.companion_type != TypeCompanion.ZERO_GRADE:
+            raise ValueError(
+                "Companion ID must be the same as Assistant ID if the type is ZERO_GRADE."
+            )
+        if self.companion_id != self.assistant_id and self.companion_type == TypeCompanion.ZERO_GRADE:
+            raise ValueError(
+                "Companion ID must be different from Assistant ID if the type is not ZERO_GRADE."
+            )
+
+        return self
 
 
 class Registration(RegistrationBase, table=True):
@@ -674,12 +821,6 @@ class Registration(RegistrationBase, table=True):
 
         title="Created At",
         description="Registration creation date and time, in Quito timezone"
-    )
-    attendance_time: datetime | None = Field(
-        default=None,
-
-        title="Attendance Time",
-        description="Time of attendance if this value is None, the user did not attend the event"
     )
     reaction: Reaction = Field(
         default=Reaction.NO_REACTION,
@@ -704,16 +845,19 @@ class Registration(RegistrationBase, table=True):
     event: Event = Relationship(
         back_populates="registrations"
     )
+    event_dates_link: list[Attendance] = Relationship(
+        back_populates="registration"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("event_id", "assistant_id", "companion_id",),
+    )
 
 
 class RegistrationPublic(RegistrationBase):
     created_at: datetime = Field(
         title="Created At",
         description="Registration creation date and time, in Quito timezone"
-    )
-    attendance_time: datetime | None = Field(
-        title="Attendance Time",
-        description="Time of attendance"
     )
     reaction: int = Field(
         title="Reaction",
@@ -790,13 +934,6 @@ def get_user(
         if user_id:
             return session.get(User, user_id)
     return None
-
-
-def authenticate_user(email: EmailStr, password: str) -> User | Literal[False]:
-    """Authenticates user by email and password."""
-    if not (user := get_user(email=email)):
-        return False
-    return user if verify_password(password, user.hashed_password) else False
 
 
 def get_current_user(

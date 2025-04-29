@@ -19,7 +19,9 @@ from app.helpers.validations import save_user_image
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
+from app.models.TypeCompanion import TypeCompanion
 from app.security.security import get_password_hash
+from app.settings.config import settings
 
 router = APIRouter(
     prefix="/assistant",
@@ -39,7 +41,7 @@ async def read_users_me(
         User,
         Security(
             get_current_active_user,
-            scopes=[Scopes.USER]
+            scopes=[Scopes.ASSISTANT]
         )
     ],
 ) -> User:
@@ -197,7 +199,8 @@ async def get_assistants_by_image(
     images_df = DeepFace.find(  # type: ignore
         img_path=str(temp_image_path),
         db_path=str(pl.Path("./data/people_imgs")),
-        model_name="Facenet512",
+        model_name=settings.FACE_RECOGNITION_AI_MODEL,
+        threshold=settings.FACE_RECOGNITION_AI_THRESHOLD,
         detector_backend="yunet",
     )
 
@@ -360,7 +363,7 @@ def register_to_event(
         User,
         Security(
             get_current_active_user,
-            scopes=[Scopes.USER]
+            scopes=[Scopes.ASSISTANT]
         )
     ],
 ) -> Registration:
@@ -398,6 +401,7 @@ def register_to_event(
         event=event,
         assistant=current_user,
         companion=assistant,
+        companion_type=TypeCompanion.ZERO_GRADE
     )
 
     session.add(registration)
@@ -435,12 +439,19 @@ def register_companion_to_event(
             description="The ID of the companion to register to the event",
         )
     ],
+    companion_type: Annotated[
+        TypeCompanion,
+        Form(
+            title="Companion type",
+            description="The type of the companion to register to the event",
+        )
+    ],
     session: SessionDependency,
     current_user: Annotated[
         User,
         Security(
             get_current_active_user,
-            scopes=[Scopes.USER]
+            scopes=[Scopes.ASSISTANT]
         )
     ],
 ) -> Registration:
@@ -480,6 +491,7 @@ def register_companion_to_event(
         event=event,
         assistant=current_user,
         companion=companion,
+        companion_type=companion_type,
     )
 
     session.add(registration)

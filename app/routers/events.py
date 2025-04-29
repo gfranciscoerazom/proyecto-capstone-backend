@@ -1,15 +1,18 @@
+import datetime
 import pathlib as pl
 from typing import Annotated, Any
 from uuid import UUID
 
 import sqlalchemy
-from fastapi import (APIRouter, Body, Form, HTTPException, Path, Security,
+from sqlmodel import select
+from fastapi import (APIRouter, Body, Form, HTTPException, Path, Query, Security,
                      status)
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
 
-from app.db.database import (Event, EventCreate, EventDate, EventDateCreate,
-                             EventPublicWithEventDate, SessionDependency, User,
+from app.db.database import (Attendance, Event, EventCreate, EventDate,
+                             EventDateCreate, EventPublicWithEventDate, EventPublicWithNoDeletedEventDate,
+                             Registration, SessionDependency, User,
                              get_current_active_user)
 from app.helpers.files import safe_path_join
 from app.helpers.validations import are_unique_dates, save_image
@@ -22,6 +25,53 @@ router = APIRouter(
     tags=[Tags.events],
 )
 
+
+@router.get(
+    "/upcoming",
+    response_model=list[EventPublicWithNoDeletedEventDate],
+
+    summary="Get upcoming events",
+    response_description="A list of upcoming events with their dates, this event are ordered by date, from the closest to the farthest",
+)
+async def get_upcoming_events(
+    session: SessionDependency,
+    quantity: Annotated[
+        int | None,
+        Query(
+            title="Quantity",
+            description="The number of upcoming events to retrieve. If not provided, all upcoming events will be returned.",
+            ge=0,
+        )
+    ] = None,
+) -> list[Event]:
+    """
+    Endpoint to get a list of upcoming events.
+
+    This endpoint allows users to retrieve a list of upcoming events, ordered by it first date from the closest to the farthest.
+
+    \f
+
+    :param session: The database session dependency to interact with the database.
+    :type session: SessionDependency
+
+    :param quantity: The number of upcoming events to retrieve.
+    :type quantity: int | None
+    """
+    events = session.exec(
+        select(Event)
+        .join(EventDate)
+        .where(
+            EventDate.day_date >= datetime.datetime.now(), EventDate.deleted == False
+        )
+        .distinct()
+    ).all()
+
+    events = sorted(events, key=lambda event: sorted(event.event_dates)[0])
+
+    if quantity:
+        events = events[:quantity]
+
+    return events
 # region Endpoints
 
 
@@ -322,5 +372,130 @@ async def add_event_date(
     session.commit()
     session.refresh(event)
     return event
+
+
+@router.delete(
+    "/date/{event_date_id}",
+    response_model=EventPublicWithEventDate,
+
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ORGANIZER]
+        )
+    ],
+    summary="Delete an event date",
+    response_description="The deleted event date",
+)
+async def delete_event_date(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event date ID",
+            description="The ID of the event date to be deleted.",
+        )
+    ],
+    session: SessionDependency,
+) -> Event:
+    """Endpoint to change to true the deleted parameter of an event date.
+
+    :param event_date_id: The ID of the event date to be marked as deleted.
+    :type event_date_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The updated event with the deleted status.
+    :rtype: Event
+    """
+
+    if not (event_date := session.get(EventDate, event_date_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event date not found",
+        )
+
+    event_date.deleted = True
+    session.add(event_date)
+    session.commit()
+    session.refresh(event_date)
+
+    return event_date.event
+
+
+@router.post(
+    "/add/attendance/{event_date_id}/{registration_id}",
+    response_model=Attendance,
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.STAFF]
+        )
+    ],
+
+    summary="Add an attendance to an event",
+    response_description="The added attendance",
+)
+async def add_attendance(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event date ID",
+            description="The ID of the event date to add an attendance to.",
+        )
+    ],
+    registration_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Registration ID",
+            description="The ID of the registration to add an attendance to.",
+        )
+    ],
+    session: SessionDependency,
+) -> Attendance:
+    """
+    Endpoint to add an attendance to an event.
+
+    This endpoint allows users to register attendance for a specific event date by providing the event ID, event date ID, and registration ID.
+
+    Args:
+        event_date_id (PositiveInt): The ID of the event date to add attendance to.
+        registration_id (PositiveInt): The ID of the registration to add attendance for.
+        session (SessionDependency): The database session dependency.
+
+    Returns:
+        Attendance: The added attendance.
+
+    Raises:
+        HTTPException: If the event or event date is not found or the attendance could not be added.
+    """
+    if not (event_date := session.get(EventDate, event_date_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event date not found",
+        )
+
+    if not (registration := session.get(Registration, registration_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registration not found",
+        )
+
+    new_attendance: Attendance = Attendance(
+        event_date=event_date,
+        registration=registration,
+    )
+
+    session.add(new_attendance)
+    # session.commit()
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        ) from e
+    session.refresh(new_attendance)
+
+    return new_attendance
+
 
 # endregion
