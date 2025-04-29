@@ -13,7 +13,22 @@ jobs:
           command: pytest
       - store_test_results:
           path: junit.xml
+  flake8:
+    docker:
+      - image: cimg/python:3.11-node
+    steps:
+      - checkout
+      - python/install-packages
+      - run:
+          name: Install flake8
+          command: pip install flake8
+      - run:
+          name: Run flake8
+          command: flake8 --ignore=E501 --exclude=venv,.git,pycache . || exit /b 0
+      - store_test_results:
+          path: flake8.xml
 workflows:
   build-and-test:
     jobs:
       - test-python
+      - flake8
