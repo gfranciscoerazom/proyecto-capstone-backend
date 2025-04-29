@@ -31,6 +31,4 @@ workflows:
   build-and-test:
     jobs:
       - test-python
-      - flake8:
-          requires:
-            - test-python
+      - flake8
