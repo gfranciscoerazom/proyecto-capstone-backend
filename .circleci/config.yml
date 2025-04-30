@@ -12,9 +12,7 @@ jobs:
       - python/install-packages
       - run:
           name: Run tests
-          command: |
-            echo $(circleci tests glob "tests/**/*.py")
-            circleci tests glob "tests/**/*.py" | circleci tests run --command "xargs pytest --junitxml=junit.xml" --split-by=timings --timings-type=name
+          command: circleci tests glob "tests/*.py" | circleci tests run --command "xargs pytest --junitxml=junit.xml" --split-by=timings --timings-type=name
       - store_test_results:
           path: junit.xml
   flake8:
