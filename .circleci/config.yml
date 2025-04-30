@@ -16,7 +16,8 @@ jobs:
       - run:
           name: Ejecutar tests con Test Runner
           command: |
-            circleci tests run --command "pytest --junitxml=junit.xml" \
+            circleci tests glob "tests/test_*.py" | \
+            circleci tests run --command "xargs pytest --junitxml=junit.xml" \
               --split-by=timings \
               --timings-type=name \
               --verbose
