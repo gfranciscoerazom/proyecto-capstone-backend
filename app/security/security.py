@@ -63,7 +63,7 @@ def create_access_token(
 
     Args:
         data (dict[str, Any]): The data to include in the token payload.
-        expires_delta (timedelta, optional): The time duration after which the token will expire. 
+        expires_delta (timedelta, optional): The time duration after which the token will expire.
 
     Returns:
         str: The encoded JWT as a string.

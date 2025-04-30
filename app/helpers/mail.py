@@ -36,7 +36,7 @@ def send_new_assistant_email(
     with connect_to_smtp_server() as server:
         server.sendmail(settings.EMAIL_SENDER, user.email, em.as_string())
 
-   
+
 def send_event_rating_email(
     user: User
 ) -> None:
@@ -55,6 +55,7 @@ def send_event_rating_email(
     with connect_to_smtp_server() as server:
         server.sendmail(settings.EMAIL_SENDER, user.email, em.as_string())
 
+
 def send_event_registration_email(
     user: User
 ) -> None:
@@ -70,7 +71,8 @@ def send_event_registration_email(
     em.set_content(body, subtype='html')
 
     with connect_to_smtp_server() as server:
-        server.sendmail(settings.EMAIL_SENDER, user.email, em.as_string())         
+        server.sendmail(settings.EMAIL_SENDER, user.email, em.as_string())
+
 
 def send_event_reminder_email(
     user: User,
@@ -89,7 +91,8 @@ def send_event_reminder_email(
     em.set_content(body, subtype='html')
 
     with connect_to_smtp_server() as server:
-        server.sendmail(settings.EMAIL_SENDER, user.email, em.as_string())  
+        server.sendmail(settings.EMAIL_SENDER, user.email, em.as_string())
+
 
 def send_registration_canceled_email(
     user: User,
@@ -108,5 +111,4 @@ def send_registration_canceled_email(
     em.set_content(body, subtype='html')
 
     with connect_to_smtp_server() as server:
-        server.sendmail(settings.EMAIL_SENDER, user.email, em.as_string())                    
-
+        server.sendmail(settings.EMAIL_SENDER, user.email, em.as_string())

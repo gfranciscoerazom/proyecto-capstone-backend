@@ -51,10 +51,10 @@ async def add_user(
     """
     Adds a new user of type staff into the database.
 
-    \f 
+    \f
 
     :param user: Information about the user to be added.
-    :type UserCreate: 
+    :type UserCreate:
     :param session: Database session dependency to connect to the database.
     :type session: SessionDependency
     :return: The information of the user that was added to the database.

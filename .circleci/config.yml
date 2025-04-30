@@ -24,7 +24,7 @@ jobs:
           command: pip install flake8
       - run:
           name: Run flake8
-          command: flake8 --ignore=E501 --exclude=venv,.git,pycache . || true
+          command: flake8 --ignore=E501 --exclude=.venv,.git,pycache . || true
       - store_test_results:
           path: flake8.xml
 workflows:
