@@ -11,26 +11,20 @@ jobs:
       - checkout
       - python/install-packages
       - run:
-          name: Instalar dependencias de testing
+          name: Instalar pytest
           command: pip install pytest
       - run:
-          name: Run tests
+          name: Ejecutar tests con Test Runner
           command: |
-            # Crear directorio para timings
-            mkdir -p .circleci-test-timings
-            
-            # Ejecutar tests con fallback a filesize
             circleci tests glob "tests/test_*.py" | \
-            circleci tests split --split-by=timings --timings-type=name || \
-            circleci tests split --split-by=filesize | \
-            xargs pytest --junitxml=junit.xml
-            
-            # Guardar timings para próximas ejecuciones
-            circleci tests timings save .circleci-test-timings/timings.json
+            circleci tests run --command "xargs pytest --junitxml=junit.xml" \
+              --split-by=timings \
+              --timings-type=name \
+              --verbose
       - store_test_results:
           path: junit.xml
       - store_artifacts:
-          path: .circleci-test-timings/timings.json
+          path: /tmp/circleci-test-results/
 
   flake8:
     docker:
@@ -38,9 +32,6 @@ jobs:
     steps:
       - checkout
       - python/install-packages
-      - run:
-          name: Install flake8
-          command: pip install flake8
       - run:
           name: Run flake8
           command: flake8 --ignore=E501 --exclude=.venv,.git,__pycache__ . || true
