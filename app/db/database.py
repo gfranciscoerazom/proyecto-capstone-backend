@@ -921,24 +921,38 @@ def get_session():
 
 
 def get_user(
+    session: "SessionDependency",
     email: EmailStr | None = None,
-    user_id: int | None = None
+    user_id: int | None = None,
 ) -> User | None:
-    """Retrieve a user by email or ID."""
+    """Function to get a user by email or user_id.
+    If both email and user_id are provided, a ValueError is raised.
+    
+    :param session: Database session dependency to connect to the database.
+    :type session:
+    :param email: Email address of the user to be retrieved.
+    :type email:
+    :param user_id: ID of the user to be retrieved.
+    :type user_id:
+    :return: The user object if found
+    :rtype: User | None
+    """
+    if email and user_id:
+        raise ValueError("Only one of email or user_id should be provided.")
+    
     if not email and not user_id:
-        return None
+        raise ValueError("Either email or user_id must be provided.")
 
-    with Session(engine) as session:
-        if email:
-            return session.exec(select(User).where(User.email == email)).first()
-        if user_id:
-            return session.get(User, user_id)
-    return None
+    if email:
+        return session.exec(select(User).where(User.email == email)).first()
+
+    return session.get(User, user_id)
 
 
 def get_current_user(
     security_scopes: SecurityScopes,
-    token: Annotated[str, Depends(oauth2_scheme)]
+    token: Annotated[str, Depends(oauth2_scheme)],
+    session: "SessionDependency",
 ) -> User:
     """Dependency to get current user from token."""
     authenticate_value: str = f'Bearer scope="{security_scopes.scope_str}"' if security_scopes.scopes else "Bearer"
@@ -964,7 +978,7 @@ def get_current_user(
     except (jwt.InvalidTokenError, ValidationError):
         raise credentials_exception
 
-    if not (user := get_user(email=token_data.username)):
+    if not (user := get_user(session=session, email=token_data.username)):
         raise credentials_exception
 
     if not all(scope in token_data.scopes for scope in security_scopes.scopes):
