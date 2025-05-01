@@ -11,20 +11,16 @@ jobs:
       - checkout
       - python/install-packages
       - run:
-          name: Instalar pytest
-          command: pip install pytest
-      - run:
           name: Ejecutar tests con Test Runner
           command: |
-            circleci tests glob "tests/test_*.py" | \
-            circleci tests run --command "xargs pytest --junitxml=junit.xml" \
-              --split-by=timings \
-              --timings-type=name \
-              --verbose
+            set -e
+            TEST_FILES=$(circleci tests glob "./**/test_*.py" | circleci tests split --split-by=timings)
+            mkdir -p test-results
+            pytest --verbose --junitxml=test-results/junit.xml $TEST_FILES
       - store_test_results:
-          path: junit.xml
+          path: test-results
       - store_artifacts:
-          path: /tmp/circleci-test-results/
+          path: test-results
 
   flake8:
     docker:
