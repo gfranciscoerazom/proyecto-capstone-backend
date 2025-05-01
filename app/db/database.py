@@ -935,8 +935,6 @@ def get_user(
     if user_id:
         return session.get(User, user_id)
 
-    return None
-
 
 def get_current_user(
     security_scopes: SecurityScopes,
