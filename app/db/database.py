@@ -925,15 +925,28 @@ def get_user(
     email: EmailStr | None = None,
     user_id: int | None = None,
 ) -> User | None:
-    """Retrieve a user by email or ID."""
+    """Function to get a user by email or user_id.
+    If both email and user_id are provided, a ValueError is raised.
+    
+    :param session: Database session dependency to connect to the database.
+    :type session:
+    :param email: Email address of the user to be retrieved.
+    :type email:
+    :param user_id: ID of the user to be retrieved.
+    :type user_id:
+    :return: The user object if found
+    :rtype: User | None
+    """
+    if email and user_id:
+        raise ValueError("Only one of email or user_id should be provided.")
+    
     if not email and not user_id:
-        return None
+        raise ValueError("Either email or user_id must be provided.")
 
     if email:
         return session.exec(select(User).where(User.email == email)).first()
 
-    if user_id:
-        return session.get(User, user_id)
+    return session.get(User, user_id)
 
 
 def get_current_user(
