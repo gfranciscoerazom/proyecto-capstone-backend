@@ -1,39 +1,11 @@
-import pytest
+from faker import Faker
 from fastapi import status
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
-from sqlmodel.pool import StaticPool
+from sqlmodel import Session
 
-from app.db.database import User, get_session
-from app.main import app
+from app.db.database import User
 from app.models.Role import Role
 from app.security.security import get_password_hash
-from faker import Faker
-
-@pytest.fixture
-def faker():
-    return Faker()
-
-
-@pytest.fixture(name="session")
-def session_fixture():
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
-
-
-@pytest.fixture(name="client")
-def client_fixture(session: Session):
-    def get_session_override():
-        return session
-
-    app.dependency_overrides[get_session] = get_session_override
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides.clear()
 
 
 def test_add_staff(session: Session, client: TestClient, faker: Faker):
@@ -176,39 +148,39 @@ def test_add_staff_wrong_password(session: Session, client: TestClient):
   -d 'email=Patricio%40udla.edu.ec&first_name=Patricio&last_name=Estrella&password=6666666'
   """
     session.add(
-            User(
-                first_name="Admin",
-                last_name="User",
-                email="admin@udla.edu.ec",
-                hashed_password=get_password_hash("admin"),
-                role=Role.ORGANIZER,
-            )
+        User(
+            first_name="Admin",
+            last_name="User",
+            email="admin@udla.edu.ec",
+            hashed_password=get_password_hash("admin"),
+            role=Role.ORGANIZER,
         )
+    )
     session.commit()
 
     token = client.post("/token", data={
-            "grant_type": "password",
-            "username": "admin@udla.edu.ec",
-            "password": "admin",
-            "scope": "organizer",
-            "client_id": "",
-            "client_secret": ""
-        }).json()["access_token"]
+        "grant_type": "password",
+        "username": "admin@udla.edu.ec",
+        "password": "admin",
+        "scope": "organizer",
+        "client_id": "",
+        "client_secret": ""
+    }).json()["access_token"]
 
     response = client.post(
-            "/staff/add",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "accept": "application/json",
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            data={
-                "email": "Patricio@udla.edu.ec",
-                "first_name": "Patricio",
-                "last_name": "Estrella",
-                "password": "6666666"
-            }
-        )
+        "/staff/add",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        data={
+            "email": "Patricio@udla.edu.ec",
+            "first_name": "Patricio",
+            "last_name": "Estrella",
+            "password": "6666666"
+        }
+    )
 
     json_response = response.json()
 

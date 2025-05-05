@@ -1,66 +1,7 @@
-import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
-from sqlmodel.pool import StaticPool
+from sqlmodel import Session
 
-from app.db.database import User, get_session
-from app.main import app
-from app.models.Role import Role
-from app.security.security import get_password_hash
-from faker import Faker
-
-@pytest.fixture
-def faker():
-    return Faker()
-
-
-@pytest.fixture(name="session")
-def session_fixture():
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
-
-
-@pytest.fixture(name="client")
-def client_fixture(session: Session):
-    def get_session_override():
-        return session
-
-    app.dependency_overrides[get_session] = get_session_override
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides.clear()
-
-@pytest.fixture(name="token")
-def token_fixture(session: Session, client: TestClient):
-    """Fixture to create a token for the admin user."""
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
-    return token
-
-###Upcoming events
 
 def test_events_upcoming(client: TestClient):
     """Test the /events/upcoming endpoint without no parameters.
@@ -99,7 +40,7 @@ def test_events_upcoming_negative_quantity(client: TestClient):
     assert json_response["detail"][0]["msg"] == "Input should be greater than or equal to 0"
 
 
-#### Events add
+# Events add
 def test_add_event_basic(session: Session, client: TestClient, token: str):
     """Test the /events/add endpoint with basic event data and a valid token.
 
@@ -115,13 +56,15 @@ def test_add_event_basic(session: Session, client: TestClient, token: str):
       -F 'capacity=250' \\
       -F 'capacity_type=site_capacity' \
     """
-    
+    files = {
+        "image": ("test_image.webp", b"fake_image_content", "image/webp")
+    }
+
     response = client.post(
         "/events/add",
         headers={
             "Authorization": f"Bearer {token}",
             "accept": "application/json",
-            "Content-Type": "application/x-www-form-urlencoded"
         },
         data={
             "name": "NASA",
@@ -130,10 +73,12 @@ def test_add_event_basic(session: Session, client: TestClient, token: str):
             "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
             "capacity": "250",
             "capacity_type": "site_capacity"
-        }
+        },
+        files=files
     )
 
     json_response = response.json()
+    print(json_response)
 
     assert response.status_code == status.HTTP_200_OK
     assert json_response["name"] == "NASA"
@@ -142,7 +87,7 @@ def test_add_event_basic(session: Session, client: TestClient, token: str):
     assert isinstance(json_response["id"], int)
 
 
-#### Events by ID
+# Events by ID
 def test_find_event_by_id(session: Session, client: TestClient, token: str):
     """Test the /events/{id} endpoint to retrieve a specific event by its ID with a valid token.
 
@@ -151,7 +96,7 @@ def test_find_event_by_id(session: Session, client: TestClient, token: str):
       -H 'accept: application/json' \\
       -H 'Authorization: Bearer <token>'
     """
-    
+
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -202,7 +147,7 @@ def test_find_event_by_nonexistent_id(session: Session, client: TestClient, toke
       -H 'accept: application/json' \\
       -H 'Authorization: Bearer <token>'
     """
-    
+
     response = client.get(
         "/events/6753",
         headers={
@@ -225,7 +170,7 @@ def test_find_event_by_negative_id(session: Session, client: TestClient, token: 
       -H 'accept: application/json' \\
       -H 'Authorization: Bearer <token>'
     """
-    
+
     response = client.get(
         "/events/-564",
         headers={
@@ -240,10 +185,10 @@ def test_find_event_by_negative_id(session: Session, client: TestClient, token: 
     assert json_response["detail"][0]["loc"] == ["path", "event_id"]
     assert json_response["detail"][0]["msg"] == "Input should be greater than 0"
 
-#### Events image
+# Events image
 
 
-#### Add dates to events
+# Add dates to events
 def test_add_event_dates_success(session: Session, client: TestClient, token: str):
     """Test the /events/{id}/dates/add endpoint by adding dates successfully with a valid token.
 
@@ -254,7 +199,7 @@ def test_add_event_dates_success(session: Session, client: TestClient, token: st
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-04-30","start_time":"07:20:17.219Z","end_time":"10:20:17.219Z","deleted":false}]'
     """
-    
+
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -321,7 +266,7 @@ def test_add_event_dates_invalid_times(session: Session, client: TestClient, tok
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-04-30","start_time":"07:24:42.043Z","end_time":"07:24:42.043Z","deleted":false}]'
     """
-    
+
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -381,7 +326,7 @@ def test_add_event_dates_nonexistent_event(session: Session, client: TestClient,
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-04-30","start_time":"07:24:42.043Z","end_time":"10:24:42.043Z","deleted":false}]'
     """
-    
+
     response = client.post(
         "/events/765/dates/add",
         headers={
@@ -415,7 +360,7 @@ def test_add_event_dates_negative_id(session: Session, client: TestClient, token
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-04-30","start_time":"07:24:42.043Z","end_time":"10:24:42.043Z","deleted":false}]'
     """
-    
+
     response = client.post(
         "/events/-765/dates/add",
         headers={
@@ -450,7 +395,7 @@ def test_add_multiple_event_dates_success(session: Session, client: TestClient, 
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-05-01","start_time":"07:24:42.043Z","end_time":"12:24:42.043Z","deleted":false}, {"day_date":"2025-05-02","start_time":"07:00:00.000Z","end_time":"12:00:00.000Z","deleted":false}, {"day_date":"2025-05-03","start_time":"07:00:00.000Z","end_time":"12:00:00.000Z","deleted":false}]'
     """
-    
+
     # Create an event first
     image_content = b"fake_image_content"
     files = {
@@ -529,7 +474,7 @@ def test_add_duplicate_event_dates(session: Session, client: TestClient, token: 
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-05-01","start_time":"07:24:42.043Z","end_time":"12:24:42.043Z","deleted":false}, {"day_date":"2025-05-02","start_time":"07:00:00.000Z","end_time":"12:00:00.000Z","deleted":false}, {"day_date":"2025-05-03","start_time":"07:00:00.000Z","end_time":"12:00:00.000Z","deleted":false}]'
     """
-    
+
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -617,9 +562,11 @@ def test_add_duplicate_event_dates(session: Session, client: TestClient, token: 
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert json_response["detail"] == "In the provided dates, there are duplicates with the existing dates or among themselves."
-##Si valida fechas pasadas, revisar eso
+# Si valida fechas pasadas, revisar eso
 
-#### Add date to an event
+# Add date to an event
+
+
 def test_add_single_event_date_success(session: Session, client: TestClient, token: str):
     """Test the /events/{id}/date/add endpoint by adding a single date successfully with a valid token.
 
@@ -630,7 +577,7 @@ def test_add_single_event_date_success(session: Session, client: TestClient, tok
       -H 'Content-Type: application/x-www-form-urlencoded' \\
       -d 'day_date=2025-04-28&start_time=07%3A33%3A32.137Z&end_time=10%3A33%3A32.137Z&deleted=false'
     """
-    
+
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -675,7 +622,8 @@ def test_add_single_event_date_success(session: Session, client: TestClient, tok
 
     assert response.status_code == status.HTTP_200_OK
     assert isinstance(json_response["event_dates"], list)
-    assert any(date["day_date"] == "2025-04-28" for date in json_response["event_dates"])
+    assert any(date["day_date"] ==
+               "2025-04-28" for date in json_response["event_dates"])
 
 
 def test_add_single_event_date_duplicate(session: Session, client: TestClient, token: str):
@@ -688,7 +636,7 @@ def test_add_single_event_date_duplicate(session: Session, client: TestClient, t
       -H 'Content-Type: application/x-www-form-urlencoded' \\
       -d 'day_date=2025-06-28&start_time=07%3A33%3A32.137Z&end_time=10%3A33%3A32.137Z&deleted=false'
     """
-    
+
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -750,7 +698,7 @@ def test_add_single_event_date_duplicate(session: Session, client: TestClient, t
     assert json_response["detail"] == "The provided date is a duplicate with an existing date."
 
 
-#### Delete an event date
+# Delete an event date
 def test_delete_event_date_marks_as_deleted(session: Session, client: TestClient, token: str):
     """Test the DELETE /events/date/{date_id} endpoint marks the date as deleted.
 
@@ -759,11 +707,6 @@ def test_delete_event_date_marks_as_deleted(session: Session, client: TestClient
       -H 'accept: application/json' \\
       -H 'Authorization: Bearer <token>'
     """
-
-    image_content = b"img"
-    files = {
-        "image": ("test.webp", image_content, "image/webp")
-    }
 
     event_response = client.post(
         "/events/add",
@@ -779,10 +722,13 @@ def test_delete_event_date_marks_as_deleted(session: Session, client: TestClient
             "capacity": "250",
             "capacity_type": "site_capacity",
         },
-        files=files
+        files={
+            "image": ("test.webp", b"img", "image/webp")
+        }
     )
 
     event_id = event_response.json()["id"]
+    print(event_id)
 
     add_date_resp = client.post(
         f"/events/{event_id}/date/add",
@@ -819,7 +765,8 @@ def test_delete_event_date_marks_as_deleted(session: Session, client: TestClient
 
     assert delete_response.status_code == status.HTTP_200_OK
 
-    found = next((d for d in json_response["event_dates"] if d["id"] == date_id), None)
+    found = next(
+        (d for d in json_response["event_dates"] if d["id"] == date_id), None)
     assert found is not None
     assert found["deleted"] is True
 
@@ -848,4 +795,4 @@ def test_delete_nonexistent_event_date(client: TestClient, token: str):
     assert json_response["detail"] == "Event date not found"
 
 
-#### Events add attendence
+# Events add attendence

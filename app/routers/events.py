@@ -4,16 +4,16 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import sqlalchemy
-from sqlmodel import select
-from fastapi import (APIRouter, Body, Form, HTTPException, Path, Query, Security,
-                     status)
+from fastapi import (APIRouter, Body, Form, HTTPException, Path, Query,
+                     Security, status)
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
+from sqlmodel import select
 
 from app.db.database import (Attendance, Event, EventCreate, EventDate,
-                             EventDateCreate, EventPublicWithEventDate, EventPublicWithNoDeletedEventDate,
-                             Registration, SessionDependency, User,
-                             get_current_active_user)
+                             EventDateCreate, EventPublicWithEventDate,
+                             EventPublicWithNoDeletedEventDate, Registration,
+                             SessionDependency, User, get_current_active_user)
 from app.helpers.files import safe_path_join
 from app.helpers.validations import are_unique_dates, save_image
 from app.models.Scopes import Scopes
@@ -92,7 +92,13 @@ async def add_event(
         )
     ],
     session: SessionDependency,
-    current_user: Annotated[User, Security(get_current_active_user, scopes=[Scopes.ORGANIZER])],
+    current_user: Annotated[
+        User,
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ORGANIZER],
+        )
+    ],
 ) -> Event:
     """
     Add an event to the database.
@@ -132,9 +138,9 @@ async def add_event(
             image_path.unlink()
 
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail=str(e)
-        )
+        ) from e
 
     session.refresh(new_event)
     return new_event

@@ -6,4 +6,11 @@
     "python.analysis.typeCheckingMode": "strict",
     "python.envFile": "${workspaceFolder}/.env",
     "python.analysis.supportDocstringTemplate": true,
+    "python.testing.pytestArgs": [
+        "-n",
+        "logical",
+        ".",
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
 }

@@ -14,3 +14,4 @@ pymysql
 cryptography
 pytest-xdist
 pytest-xdist[psutil]
+pytest-cov

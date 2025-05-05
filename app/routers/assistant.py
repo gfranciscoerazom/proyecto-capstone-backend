@@ -64,6 +64,7 @@ async def read_users_me(
 @router.post(
     "/add",
     response_model=UserAssistantPublic,
+    status_code=status.HTTP_201_CREATED,
 
     summary="Add a new user",
     response_description="Successful Response with the new user",

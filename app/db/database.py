@@ -6,13 +6,14 @@ import jwt
 from fastapi import Depends, HTTPException, UploadFile, status
 from fastapi.security import SecurityScopes
 from pydantic import (AfterValidator, EmailStr, PositiveInt, ValidationError,
-                      field_validator, model_validator)
+                      model_validator)
 from sqlalchemy import Engine, Text, UniqueConstraint
 from sqlmodel import (Field, Relationship, Session, SQLModel,  # type: ignore
                       create_engine, select)
 
-from app.db.datatypes import (BeforeTodayDate, GoogleMapsURL, Password, PersonName,
-                              PhoneNumber, TermsAndConditions, UpperStr)
+from app.db.datatypes import (BeforeTodayDate, GoogleMapsURL, Password,
+                              PersonName, PhoneNumber, TermsAndConditions,
+                              UpperStr)
 from app.helpers.dateAndTime import get_quito_time
 from app.helpers.validations import (is_valid_ecuadorian_id,
                                      is_valid_ecuadorian_passport_number)
@@ -467,24 +468,24 @@ class Event(EventBase, table=True):
         link_model=StaffEventLink
     )
 
-    @field_validator("organizer_id", mode="after")
-    @classmethod
-    def is_valid_organizer_id(cls, organizer_id: int) -> int:
-        if organizer_id < 1:
-            raise ValueError("Organizer ID must be greater than 0.")
+    # @field_validator("organizer_id", mode="after")
+    # @classmethod
+    # def is_valid_organizer_id(cls, organizer_id: int) -> int:
+    #     if organizer_id < 1:
+    #         raise ValueError("Organizer ID must be greater than 0.")
 
-        with Session(engine) as session:
-            if not (
-                user := session.exec(
-                    select(User).where(User.id == organizer_id)
-                ).first()
-            ):
-                raise ValueError("Organizer not found.")
+    #     with Session(engine) as session:
+    #         if not (
+    #             user := session.exec(
+    #                 select(User).where(User.id == organizer_id)
+    #             ).first()
+    #         ):
+    #             raise ValueError("Organizer not found.")
 
-            if user.role != Role.ORGANIZER:
-                raise ValueError("User is not an organizer.")
+    #         if user.role != Role.ORGANIZER:
+    #             raise ValueError("User is not an organizer.")
 
-        return organizer_id
+    #     return organizer_id
 
 
 class EventPublic(EventBase):
@@ -927,7 +928,7 @@ def get_user(
 ) -> User | None:
     """Function to get a user by email or user_id.
     If both email and user_id are provided, a ValueError is raised.
-    
+
     :param session: Database session dependency to connect to the database.
     :type session:
     :param email: Email address of the user to be retrieved.
@@ -939,7 +940,7 @@ def get_user(
     """
     if email and user_id:
         raise ValueError("Only one of email or user_id should be provided.")
-    
+
     if not email and not user_id:
         raise ValueError("Either email or user_id must be provided.")
 

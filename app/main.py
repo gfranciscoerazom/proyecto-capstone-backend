@@ -291,26 +291,16 @@ async def add_process_time_header(
     call_next: Callable[[Request], Any]
     # call_next: (Request) -> Any
 ):
-    """Middleware to add a custom header indicating the processing time of a request.
+    """Middleware to add a custom headers for example indicating the processing time of a request.
 
-    :param request: Description
+    :param request: The incoming HTTP request.
     :type request: Request
-    :param call_next: Description
-    :type call_next:
-    :return: Description
+
+    :param call_next: A function that processes the request and returns a response.
+    :type call_next: Callable[[Request], Any]
+
+    :return: The HTTP response with added headers.
     :rtype: Any
-    """
-    """
-    Middleware to add a custom header indicating the processing time of a request.
-
-    Args:
-        request (Request): The incoming HTTP request.
-        call_next (Callable[[Request], Any]): A function that processes the request
-        and returns a response.
-
-    Returns:
-        Response: The HTTP response with an added "X-Process-Time" header
-        indicating the time taken to process the request.
     """
     start_time = time.perf_counter()
     response = await call_next(request)
