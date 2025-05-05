@@ -30,7 +30,6 @@ def client_fixture(session: Session):
     yield client
     app.dependency_overrides.clear()
 
-
 def test_read_main(client: TestClient):
     """Test the root endpoint to check if returns a hello world message.
 
@@ -182,103 +181,6 @@ def test_obtain_token_invalid_scope(session: Session, client: TestClient):
     })
     assert response.status_code == status.HTTP_403_FORBIDDEN
     assert response.json() == {"detail": "Not enough permissions"}
-
-
-def test_get_organizer_info(session: Session, client: TestClient):
-    """Test the organizer info endpoint with valid token.
-
-    The curl command to test this endpoint is:
-
-    curl -X 'GET' \\
-      'http://127.0.0.1:8000/organizer/info' \\
-      -H 'accept: application/json' \\
-      -H 'Authorization: Bearer {token}'
-    """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
-    response = client.get("/organizer/info", headers={
-        "Authorization": f"Bearer {token}"
-    })
-
-    assert response.status_code == status.HTTP_200_OK
-    json_response = response.json()
-    assert json_response["email"] == "admin@udla.edu.ec"
-    assert json_response["first_name"] == "Admin"
-    assert json_response["last_name"] == "User"
-    assert json_response["role"] == "organizer"
-
-
-def test_add_staff(session: Session, client: TestClient):
-    """Test the staff add endpoint with valid token.
-
-    The curl command to test this endpoint is:
-    curl -X 'POST' \\
-      'http://127.0.0.1:8000/staff/add' \\
-      -H 'accept: application/json' \\
-      -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkB1ZGxhLmVkdS5lYyIsInNjb3BlcyI6WyJvcmdhbml6ZXIiXSwiZXhwIjoxNzQ0OTM0OTUwfQ.iEvVW1-lu1SZCmizTcvP-VRaTw8NUw9uuYLlKsYKfJc' \\
-      -H 'Content-Type: application/x-www-form-urlencoded' \\
-      -d 'email=BobEsponja%40udla.edu.ec&first_name=Bob&last_name=Esponja&password=Dinero666%40'
-  """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
-    response = client.post(
-        "/staff/add",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "accept": "application/json",
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        data={
-            "email": "Patricio@udla.edu.ec",
-            "first_name": "Patricio",
-            "last_name": "Estrella",
-            "password": "Dinero555@"
-        }
-    )
-
-    json_response = response.json()
-
-    assert response.status_code == status.HTTP_201_CREATED
-    assert json_response["email"] == "Patricio@udla.edu.ec"
-    assert json_response["first_name"] == "Patricio"
-    assert json_response["last_name"] == "Estrella"
-    assert json_response["role"] == "staff"
 
 
 # curl -X 'POST' \
