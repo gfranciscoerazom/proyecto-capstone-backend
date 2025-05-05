@@ -32,16 +32,9 @@ def client_fixture(session: Session):
     app.dependency_overrides.clear()
 
 
-def test_get_organizer_info(session: Session, client: TestClient):
-    """Test the organizer info endpoint with valid token.
-
-    The curl command to test this endpoint is:
-
-    curl -X 'GET' \\
-      'http://127.0.0.1:8000/organizer/info' \\
-      -H 'accept: application/json' \\
-      -H 'Authorization: Bearer {token}'
-    """
+@pytest.fixture(name="token")
+def token_fixture(session: Session, client: TestClient):
+    """Fixture to create a token for the admin user."""
     session.add(
         User(
             first_name="Admin",
@@ -62,6 +55,19 @@ def test_get_organizer_info(session: Session, client: TestClient):
         "client_secret": ""
     }).json()["access_token"]
 
+    return token
+
+
+def test_get_organizer_info(session: Session, client: TestClient, token: str):
+    """Test the organizer info endpoint with valid token.
+
+    The curl command to test this endpoint is:
+
+    curl -X 'GET' \\
+      'http://127.0.0.1:8000/organizer/info' \\
+      -H 'accept: application/json' \\
+      -H 'Authorization: Bearer {token}'
+    """
     response = client.get("/organizer/info", headers={
         "Authorization": f"Bearer {token}"
     })

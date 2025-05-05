@@ -30,7 +30,6 @@ def client_fixture(session: Session):
     yield client
     app.dependency_overrides.clear()
 
-
 def test_read_main(client: TestClient):
     """Test the root endpoint to check if returns a hello world message.
 

@@ -35,6 +35,31 @@ def client_fixture(session: Session):
     yield client
     app.dependency_overrides.clear()
 
+@pytest.fixture(name="token")
+def token_fixture(session: Session, client: TestClient):
+    """Fixture to create a token for the admin user."""
+    session.add(
+        User(
+            first_name="Admin",
+            last_name="User",
+            email="admin@udla.edu.ec",
+            hashed_password=get_password_hash("admin"),
+            role=Role.ORGANIZER,
+        )
+    )
+    session.commit()
+
+    token = client.post("/token", data={
+        "grant_type": "password",
+        "username": "admin@udla.edu.ec",
+        "password": "admin",
+        "scope": "organizer",
+        "client_id": "",
+        "client_secret": ""
+    }).json()["access_token"]
+
+    return token
+
 ###Upcoming events
 
 def test_events_upcoming(client: TestClient):
@@ -75,7 +100,7 @@ def test_events_upcoming_negative_quantity(client: TestClient):
 
 
 #### Events add
-def test_add_event_basic(session: Session, client: TestClient):
+def test_add_event_basic(session: Session, client: TestClient, token: str):
     """Test the /events/add endpoint with basic event data and a valid token.
 
     curl -X 'POST' \\
@@ -90,27 +115,7 @@ def test_add_event_basic(session: Session, client: TestClient):
       -F 'capacity=250' \\
       -F 'capacity_type=site_capacity' \
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
-
+    
     response = client.post(
         "/events/add",
         headers={
@@ -138,7 +143,7 @@ def test_add_event_basic(session: Session, client: TestClient):
 
 
 #### Events by ID
-def test_find_event_by_id(session: Session, client: TestClient):
+def test_find_event_by_id(session: Session, client: TestClient, token: str):
     """Test the /events/{id} endpoint to retrieve a specific event by its ID with a valid token.
 
     curl -X 'GET' \\
@@ -146,26 +151,7 @@ def test_find_event_by_id(session: Session, client: TestClient):
       -H 'accept: application/json' \\
       -H 'Authorization: Bearer <token>'
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
+    
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -208,7 +194,7 @@ def test_find_event_by_id(session: Session, client: TestClient):
     assert json_response["capacity_type"] == "site_capacity"
 
 
-def test_find_event_by_nonexistent_id(session: Session, client: TestClient):
+def test_find_event_by_nonexistent_id(session: Session, client: TestClient, token: str):
     """Test the /events/{id} endpoint with a non-existent event ID and a valid token.
 
     curl -X 'GET' \\
@@ -216,26 +202,7 @@ def test_find_event_by_nonexistent_id(session: Session, client: TestClient):
       -H 'accept: application/json' \\
       -H 'Authorization: Bearer <token>'
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
+    
     response = client.get(
         "/events/6753",
         headers={
@@ -250,7 +217,7 @@ def test_find_event_by_nonexistent_id(session: Session, client: TestClient):
     assert json_response["detail"] == "Event not found"
 
 
-def test_find_event_by_negative_id(session: Session, client: TestClient):
+def test_find_event_by_negative_id(session: Session, client: TestClient, token: str):
     """Test the /events/{id} endpoint with a negative event ID and a valid token.
 
     curl -X 'GET' \\
@@ -258,26 +225,7 @@ def test_find_event_by_negative_id(session: Session, client: TestClient):
       -H 'accept: application/json' \\
       -H 'Authorization: Bearer <token>'
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
+    
     response = client.get(
         "/events/-564",
         headers={
@@ -296,7 +244,7 @@ def test_find_event_by_negative_id(session: Session, client: TestClient):
 
 
 #### Add dates to events
-def test_add_event_dates_success(session: Session, client: TestClient):
+def test_add_event_dates_success(session: Session, client: TestClient, token: str):
     """Test the /events/{id}/dates/add endpoint by adding dates successfully with a valid token.
 
     curl -X 'POST' \\
@@ -307,26 +255,6 @@ def test_add_event_dates_success(session: Session, client: TestClient):
       -d '[{"day_date":"2025-04-30","start_time":"07:20:17.219Z","end_time":"10:20:17.219Z","deleted":false}]'
     """
     
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -383,7 +311,7 @@ def test_add_event_dates_success(session: Session, client: TestClient):
     assert first_date["event_id"] == event_id
 
 
-def test_add_event_dates_invalid_times(session: Session, client: TestClient):
+def test_add_event_dates_invalid_times(session: Session, client: TestClient, token: str):
     """Test the /events/{id}/dates/add endpoint with invalid times (start_time == end_time).
 
     curl -X 'POST' \\
@@ -393,26 +321,7 @@ def test_add_event_dates_invalid_times(session: Session, client: TestClient):
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-04-30","start_time":"07:24:42.043Z","end_time":"07:24:42.043Z","deleted":false}]'
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
+    
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -462,7 +371,7 @@ def test_add_event_dates_invalid_times(session: Session, client: TestClient):
     assert json_response["detail"][0]["msg"] == "Value error, Start time must be before end time."
 
 
-def test_add_event_dates_nonexistent_event(session: Session, client: TestClient):
+def test_add_event_dates_nonexistent_event(session: Session, client: TestClient, token: str):
     """Test the /events/{id}/dates/add endpoint with a non-existent event ID.
 
     curl -X 'POST' \\
@@ -472,26 +381,7 @@ def test_add_event_dates_nonexistent_event(session: Session, client: TestClient)
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-04-30","start_time":"07:24:42.043Z","end_time":"10:24:42.043Z","deleted":false}]'
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
+    
     response = client.post(
         "/events/765/dates/add",
         headers={
@@ -515,7 +405,7 @@ def test_add_event_dates_nonexistent_event(session: Session, client: TestClient)
     assert json_response["detail"] == "Event not found"
 
 
-def test_add_event_dates_negative_id(session: Session, client: TestClient):
+def test_add_event_dates_negative_id(session: Session, client: TestClient, token: str):
     """Test the /events/{id}/dates/add endpoint with a negative event ID.
 
     curl -X 'POST' \\
@@ -525,26 +415,7 @@ def test_add_event_dates_negative_id(session: Session, client: TestClient):
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-04-30","start_time":"07:24:42.043Z","end_time":"10:24:42.043Z","deleted":false}]'
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
+    
     response = client.post(
         "/events/-765/dates/add",
         headers={
@@ -569,7 +440,7 @@ def test_add_event_dates_negative_id(session: Session, client: TestClient):
     assert json_response["detail"][0]["msg"] == "Input should be greater than 0"
 
 
-def test_add_multiple_event_dates_success(session: Session, client: TestClient):
+def test_add_multiple_event_dates_success(session: Session, client: TestClient, token: str):
     """Test the /events/{id}/dates/add endpoint by adding multiple dates successfully with a valid token.
 
     curl -X 'POST' \\
@@ -579,27 +450,7 @@ def test_add_multiple_event_dates_success(session: Session, client: TestClient):
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-05-01","start_time":"07:24:42.043Z","end_time":"12:24:42.043Z","deleted":false}, {"day_date":"2025-05-02","start_time":"07:00:00.000Z","end_time":"12:00:00.000Z","deleted":false}, {"day_date":"2025-05-03","start_time":"07:00:00.000Z","end_time":"12:00:00.000Z","deleted":false}]'
     """
-    # Setup: create an organizer
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
+    
     # Create an event first
     image_content = b"fake_image_content"
     files = {
@@ -668,7 +519,7 @@ def test_add_multiple_event_dates_success(session: Session, client: TestClient):
     assert "2025-05-03" in day_dates
 
 
-def test_add_duplicate_event_dates(session: Session, client: TestClient):
+def test_add_duplicate_event_dates(session: Session, client: TestClient, token: str):
     """Test the /events/{id}/dates/add endpoint trying to add duplicated dates.
 
     curl -X 'POST' \\
@@ -678,26 +529,7 @@ def test_add_duplicate_event_dates(session: Session, client: TestClient):
       -H 'Content-Type: application/json' \\
       -d '[{"day_date":"2025-05-01","start_time":"07:24:42.043Z","end_time":"12:24:42.043Z","deleted":false}, {"day_date":"2025-05-02","start_time":"07:00:00.000Z","end_time":"12:00:00.000Z","deleted":false}, {"day_date":"2025-05-03","start_time":"07:00:00.000Z","end_time":"12:00:00.000Z","deleted":false}]'
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
+    
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -788,7 +620,7 @@ def test_add_duplicate_event_dates(session: Session, client: TestClient):
 ##Si valida fechas pasadas, revisar eso
 
 #### Add date to an event
-def test_add_single_event_date_success(session: Session, client: TestClient):
+def test_add_single_event_date_success(session: Session, client: TestClient, token: str):
     """Test the /events/{id}/date/add endpoint by adding a single date successfully with a valid token.
 
     curl -X 'POST' \\
@@ -798,26 +630,7 @@ def test_add_single_event_date_success(session: Session, client: TestClient):
       -H 'Content-Type: application/x-www-form-urlencoded' \\
       -d 'day_date=2025-04-28&start_time=07%3A33%3A32.137Z&end_time=10%3A33%3A32.137Z&deleted=false'
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
+    
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -865,7 +678,7 @@ def test_add_single_event_date_success(session: Session, client: TestClient):
     assert any(date["day_date"] == "2025-04-28" for date in json_response["event_dates"])
 
 
-def test_add_single_event_date_duplicate(session: Session, client: TestClient):
+def test_add_single_event_date_duplicate(session: Session, client: TestClient, token: str):
     """Test the /events/{id}/date/add endpoint trying to add a duplicated date.
 
     curl -X 'POST' \\
@@ -875,26 +688,7 @@ def test_add_single_event_date_duplicate(session: Session, client: TestClient):
       -H 'Content-Type: application/x-www-form-urlencoded' \\
       -d 'day_date=2025-06-28&start_time=07%3A33%3A32.137Z&end_time=10%3A33%3A32.137Z&deleted=false'
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
-
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
+    
     image_content = b"fake_image_content"
     files = {
         "image": ("test_image.webp", image_content, "image/webp")
@@ -957,41 +751,21 @@ def test_add_single_event_date_duplicate(session: Session, client: TestClient):
 
 
 #### Delete an event date
-##No te dice si pones un id que no existe, revisar eso y no borra
-def test_delete_event_date_success(session: Session, client: TestClient):
-    """Test the /events/date/{date_id} endpoint by deleting a specific event date with a valid token.
+def test_delete_event_date_marks_as_deleted(session: Session, client: TestClient, token: str):
+    """Test the DELETE /events/date/{date_id} endpoint marks the date as deleted.
 
     curl -X 'DELETE' \\
       'http://127.0.0.1:8000/events/date/1011' \\
       -H 'accept: application/json' \\
       -H 'Authorization: Bearer <token>'
     """
-    session.add(
-        User(
-            first_name="Admin",
-            last_name="User",
-            email="admin@udla.edu.ec",
-            hashed_password=get_password_hash("admin"),
-            role=Role.ORGANIZER,
-        )
-    )
-    session.commit()
 
-    token = client.post("/token", data={
-        "grant_type": "password",
-        "username": "admin@udla.edu.ec",
-        "password": "admin",
-        "scope": "organizer",
-        "client_id": "",
-        "client_secret": ""
-    }).json()["access_token"]
-
-    image_content = b"fake_image_content"
+    image_content = b"img"
     files = {
-        "image": ("test_image.webp", image_content, "image/webp")
+        "image": ("test.webp", image_content, "image/webp")
     }
 
-    create_response = client.post(
+    event_response = client.post(
         "/events/add",
         headers={
             "Authorization": f"Bearer {token}",
@@ -1008,11 +782,9 @@ def test_delete_event_date_success(session: Session, client: TestClient):
         files=files
     )
 
-    created_event = create_response.json()
-    event_id = created_event["id"]
+    event_id = event_response.json()["id"]
 
-    # Add a date first
-    add_date_response = client.post(
+    add_date_resp = client.post(
         f"/events/{event_id}/date/add",
         headers={
             "Authorization": f"Bearer {token}",
@@ -1020,24 +792,23 @@ def test_delete_event_date_success(session: Session, client: TestClient):
             "Content-Type": "application/x-www-form-urlencoded"
         },
         data={
-            "day_date": "2025-04-01",
-            "start_time": "07:24:42.000Z",
-            "end_time": "12:24:42.000Z",
-            "deleted": "false"
+            "day_date": "2025-04-30",
+            "start_time": "07:20:17.000Z",
+            "end_time": "10:20:17.000Z",
+            "deleted": "False"
         }
     )
 
-    updated_event = add_date_response.json()
-    new_date_id = None
-    for date in updated_event["event_dates"]:
-        if date["day_date"] == "2025-04-01":
-            new_date_id = date["id"]
+    date_id = None
+    for date in add_date_resp.json()["event_dates"]:
+        if date["day_date"] == "2025-04-30":
+            date_id = date["id"]
             break
 
-    assert new_date_id is not None
+    assert date_id is not None, "Date was not created"
 
     delete_response = client.delete(
-        f"/events/date/{new_date_id}",
+        f"/events/date/{date_id}",
         headers={
             "Authorization": f"Bearer {token}",
             "accept": "application/json"
@@ -1047,9 +818,34 @@ def test_delete_event_date_success(session: Session, client: TestClient):
     json_response = delete_response.json()
 
     assert delete_response.status_code == status.HTTP_200_OK
-    assert isinstance(json_response["event_dates"], list)
-    remaining_ids = [d["id"] for d in json_response["event_dates"]]
-    assert new_date_id not in remaining_ids
+
+    found = next((d for d in json_response["event_dates"] if d["id"] == date_id), None)
+    assert found is not None
+    assert found["deleted"] is True
+
+
+def test_delete_nonexistent_event_date(client: TestClient, token: str):
+    """Test the DELETE /events/date/{date_id} endpoint with a non-existent date ID.
+
+    curl -X 'DELETE' \\
+      'http://127.0.0.1:8000/events/date/1000001' \\
+      -H 'accept: application/json' \\
+      -H 'Authorization: Bearer <token>'
+    """
+    nonexistent_date_id = 1000001
+
+    response = client.delete(
+        f"/events/date/{nonexistent_date_id}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json"
+        }
+    )
+
+    json_response = response.json()
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert json_response["detail"] == "Event date not found"
 
 
 #### Events add attendence
