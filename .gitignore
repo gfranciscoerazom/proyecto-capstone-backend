@@ -790,3 +790,7 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/git,linux,macos,pydev,images,python,pycharm,windows,database,jetbrains,pycharm+all,pycharm+iml,jetbrains+all,jetbrains+iml,visualstudiocode,sonarqube,sonar
+
+# Permitir rastrear la carpeta tests/imgs y su contenido
+!tests/imgs/
+!tests/imgs/**
