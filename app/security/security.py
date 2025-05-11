@@ -37,14 +37,14 @@ def verify_password(plain_password: str, hashed_password: bytes):
 
 
 def get_password_hash(password: str):
-    """
+    """Hashes a password using bcrypt.
+
     Hashes a given password using the configured password context.
 
-    Args:
-        password (str): The plain text password to be hashed.
-
-    Returns:
-        bytes: The hashed password.
+    :param password: The plain text password to be hashed.
+    :type password: str
+    :return: The hashed password.
+    :rtype: bytes
     """
     pwd_bytes = password.encode('utf-8')
     salt = bcrypt.gensalt()

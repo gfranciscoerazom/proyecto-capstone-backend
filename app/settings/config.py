@@ -115,11 +115,12 @@ class Settings(BaseSettings):
 # region functions
 @lru_cache
 def get_settings() -> Settings:
-    """
-    Get the settings for the application. This function is cached.
+    """Returns the settings for the application.
+    This function uses the `lru_cache` decorator to cache the settings object,
+    so that it is only loaded once and reused for subsequent calls.
 
-    Returns:
-        Settings: The settings for the application.
+    :return: Settings object containing the application settings.
+    :rtype: Settings
     """
     return Settings()  # type: ignore
 

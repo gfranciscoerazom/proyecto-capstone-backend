@@ -13,4 +13,7 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
+    "circleci.persistedProjectSelection": [
+        "circleci/4Wpu4SC3bJHGX3MXjFVUEK/H2FbqcEvy6KVDq4q9fqY5a"
+    ],
 }
