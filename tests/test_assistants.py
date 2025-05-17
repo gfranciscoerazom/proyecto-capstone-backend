@@ -195,7 +195,7 @@ def test_add_assistant_invalid_id_number(client: TestClient, token: str, faker: 
     assert json_response["detail"][0]["msg"] == "Value error, Invalid Ecuadorian ID number"
 
 
-def test_add_assistant_without_accepting_terms(client: TestClient, token: str):
+def test_add_assistant_without_accepting_terms(client: TestClient, token: str, faker: Faker):
     """Test the POST /assistant/add endpoint when terms and conditions are not accepted.
 
     curl -X 'POST' \\
@@ -217,7 +217,7 @@ def test_add_assistant_without_accepting_terms(client: TestClient, token: str):
             "accepted_terms": "false",
             "last_name": "Mebarak",
             "first_name": "Shakira",
-            "password": "ShakiraShakir34@",
+            "password": faker.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
             "email": "alphawolf@gmail.com"
         },
     )
@@ -229,7 +229,7 @@ def test_add_assistant_without_accepting_terms(client: TestClient, token: str):
     assert json_response["detail"][0]["msg"] == "Value error, You must accept the terms and conditions."
 
 
-def test_add_assistant_with_future_birthdate(client: TestClient, token: str):
+def test_add_assistant_with_future_birthdate(client: TestClient, token: str, faker: Faker):
     """Test the POST /assistant/add endpoint with a future date of birth.
 
     curl -X 'POST' \\
@@ -252,7 +252,7 @@ def test_add_assistant_with_future_birthdate(client: TestClient, token: str):
             "accepted_terms": "true",
             "last_name": "Mebarak",
             "first_name": "Shakira",
-            "password": "ShakiraShakir34@",
+            "password": faker.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
             "email": "alphawolf@gmail.com"
         },
     )
