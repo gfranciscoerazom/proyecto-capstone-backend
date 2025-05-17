@@ -63,7 +63,7 @@ def test_add_staff(session: Session, client: TestClient, faker: Faker):
     assert json_response["role"] == "staff"
 
 
-def test_add_repeated_staff_email(session: Session, client: TestClient):
+def test_add_repeated_staff_email(session: Session, client: TestClient, faker: Faker):
     """Test the staff add endpoint with valid token.
 
     The curl command to test this endpoint is:
@@ -126,7 +126,7 @@ def test_add_repeated_staff_email(session: Session, client: TestClient):
             "email": "Patricio@udla.edu.ec",
             "first_name": "Team",
             "last_name": "Rocket",
-            "password": "ConquistarMundo981@"
+            "password": faker.password(length=10, special_chars=True, digits=True, upper_case=True, lower_case=True)
         }
     )
 
