@@ -27,8 +27,8 @@ from fastapi.concurrency import asynccontextmanager
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
-from app.db.database import (SessionDependency, User, create_db_and_tables,
-                             engine)
+from app.db.database import (SessionDependency, User, UserPublic, create_db_and_tables,
+                             engine, get_current_active_user)
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import tags_metadata
@@ -247,21 +247,31 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    allowed_scopes: set[Scopes] = user.role.get_allowed_scopes()
+    if len(form_data.scopes) >= 1:
+        allowed_scopes: set[Scopes] = user.role.get_scopes()
 
-    if not any(scope in allowed_scopes for scope in form_data.scopes):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions",
-            headers={
-                "WWW-Authenticate": f'Bearer scope="{", ".join(scope.value for scope in allowed_scopes)}"'
-            },
+        if not any(scope in allowed_scopes for scope in form_data.scopes):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions",
+                headers={
+                    "WWW-Authenticate": f'Bearer scope="{", ".join(scope.value for scope in allowed_scopes)}"'
+                },
+            )
+
+        access_token: str = create_access_token(
+            data={
+                "sub": user.email,
+                "scopes": form_data.scopes,
+            }
         )
+
+        return Token(access_token=access_token)
 
     access_token: str = create_access_token(
         data={
             "sub": user.email,
-            "scopes": form_data.scopes,
+            "scopes": list(user.role.get_scopes()),
         }
     )
 
@@ -282,6 +292,33 @@ async def read_main():
     """
     return {"msg": "Hello World"}
 
+
+@app.get(
+    "/info",
+    response_model=UserPublic,
+
+    summary="Get current user",
+    response_description="Successful Response with the current user",
+)
+async def read_users_me(
+    current_user: Annotated[
+        User,
+        Depends(
+            get_current_active_user,
+        )
+    ],
+) -> User:
+    """Get the information of the current authenticated user.
+
+    \f
+
+    :param current_user: The current authenticated user.
+    :type current_user: User
+
+    :return: The current authenticated user.
+    :rtype: User
+    """
+    return current_user
 # region Middleware
 
 

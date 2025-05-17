@@ -29,38 +29,6 @@ router = APIRouter(
 )
 
 
-@router.get(
-    "/info",
-    response_model=UserAssistantPublic,
-
-    summary="Get current user",
-    response_description="Successful Response with the current user",
-)
-async def read_users_me(
-    current_user: Annotated[
-        User,
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.ASSISTANT]
-        )
-    ],
-) -> User:
-    """
-    Retrieve the current authenticated user.
-
-    This endpoint returns the details of the currently authenticated user.
-
-    \f
-
-    Args:
-        current_user (User): The current active user, obtained from the dependency injection.
-
-    Returns:
-        UserAssistant: The current authenticated user.
-    """
-    return current_user
-
-
 @router.post(
     "/add",
     response_model=UserAssistantPublic,
@@ -386,6 +354,12 @@ def register_to_event(
     Raises:
         HTTPException: If the event is not found in the database.
     """
+    if not (user := session.get(User, current_user.id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
     if not (event := session.get(Event, event_id)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -400,7 +374,7 @@ def register_to_event(
 
     registration: Registration = Registration(
         event=event,
-        assistant=current_user,
+        assistant=user,
         companion=assistant,
         companion_type=TypeCompanion.ZERO_GRADE
     )
@@ -476,6 +450,12 @@ def register_companion_to_event(
     Raises:
         HTTPException: If the event or the companion is not found in the database.
     """
+    if not (user := session.get(User, current_user.id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
     if not (event := session.get(Event, event_id)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -488,9 +468,24 @@ def register_companion_to_event(
             detail="Companion not found",
         )
 
+    # Verificar que el usuario esté registrado en el evento al que quiere registrar a su acompañante
+    user_events = session.exec(
+        select(Event).
+        join(Registration).
+        where(
+            Registration.assistant_id == user.id
+        )
+    ).all()
+
+    if event not in user_events:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not registered for this event",
+        )
+
     registration: Registration = Registration(
         event=event,
-        assistant=current_user,
+        assistant=user,
         companion=companion,
         companion_type=companion_type,
     )

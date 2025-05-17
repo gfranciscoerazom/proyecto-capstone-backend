@@ -430,12 +430,12 @@ async def delete_event_date(
 @router.post(
     "/add/attendance/{event_date_id}/{registration_id}",
     response_model=Attendance,
-    dependencies=[
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.STAFF]
-        )
-    ],
+    # dependencies=[
+    #     Security(
+    #         get_current_active_user,
+    #         scopes=[Scopes.STAFF]
+    #     )
+    # ],
 
     summary="Add an attendance to an event",
     response_description="The added attendance",
@@ -462,16 +462,16 @@ async def add_attendance(
 
     This endpoint allows users to register attendance for a specific event date by providing the event ID, event date ID, and registration ID.
 
-    Args:
-        event_date_id (PositiveInt): The ID of the event date to add attendance to.
-        registration_id (PositiveInt): The ID of the registration to add attendance for.
-        session (SessionDependency): The database session dependency.
+    \f
 
-    Returns:
-        Attendance: The added attendance.
-
-    Raises:
-        HTTPException: If the event or event date is not found or the attendance could not be added.
+    :param event_date_id: The ID of the event date to add attendance to.
+    :type event_date_id: PositiveInt
+    :param registration_id: The ID of the registration to add attendance for.
+    :type registration_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The added attendance.
+    :rtype: Attendance
     """
     if not (event_date := session.get(EventDate, event_date_id)):
         raise HTTPException(
@@ -483,6 +483,20 @@ async def add_attendance(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Registration not found",
+        )
+
+    # Verificar que la fecha del evento no esté eliminada
+    if event_date.deleted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Event date is deleted",
+        )
+
+    # Verificar que la fecha del evento pertenezca a un evento en el cual el usuario está registrado
+    if event_date.event_id != registration.event_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Event date does not belong to the event of the registration",
         )
 
     new_attendance: Attendance = Attendance(

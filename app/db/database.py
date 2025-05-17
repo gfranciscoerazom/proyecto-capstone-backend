@@ -619,12 +619,6 @@ class EventDateBase(SQLModel):
         title="End Time",
         description="Event end time"
     )
-    deleted: bool = Field(
-        default=False,
-
-        title="Deleted",
-        description="Event date deletion status"
-    )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, EventDateBase):
@@ -692,6 +686,12 @@ class EventDate(EventDateBase, table=True):
         title="Event ID",
         description="Foreign key to Event table"
     )
+    deleted: bool = Field(
+        default=False,
+
+        title="Deleted",
+        description="Event date deletion status"
+    )
 
     event: Event = Relationship(
         back_populates="event_dates"
@@ -710,6 +710,10 @@ class EventDatePublic(EventDateBase):
     event_id: int = Field(
         title="Event ID",
         description="Foreign key to Event table"
+    )
+    deleted: bool = Field(
+        title="Deleted",
+        description="Event date deletion status"
     )
 
 

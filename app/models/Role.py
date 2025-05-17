@@ -17,7 +17,7 @@ class Role(StrEnum):
     STAFF = auto()
     ORGANIZER = auto()
 
-    def get_allowed_scopes(self) -> set[Scopes]:
+    def get_scopes(self) -> set[Scopes]:
         """
         Get the allowed scopes for the role.
 

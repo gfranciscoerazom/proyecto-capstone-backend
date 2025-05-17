@@ -27,38 +27,6 @@ router = APIRouter(
 # region Endpoints
 
 
-@router.get(
-    "/info",
-    response_model=UserPublic,
-
-    summary="Get current user",
-    response_description="Successful Response with the current user",
-)
-async def read_users_me(
-    current_user: Annotated[
-        User,
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.ORGANIZER]
-        )
-    ],
-) -> User:
-    """
-    Retrieve the current authenticated user.
-
-    This endpoint returns the details of the currently authenticated user.
-
-    \f
-
-    Args:
-        current_user (User): The current active user, obtained from the dependency injection.
-
-    Returns:
-        UserPublic: The current authenticated user.
-    """
-    return current_user
-
-
 @router.post(
     "/add",
     response_model=UserPublic,

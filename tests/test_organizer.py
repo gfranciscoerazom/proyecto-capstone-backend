@@ -10,11 +10,11 @@ def test_get_organizer_info(client: TestClient, token: str, admin_user: tuple[Us
     The curl command to test this endpoint is:
 
     curl -X 'GET' \\
-      'http://127.0.0.1:8000/organizer/info' \\
+      'http://127.0.0.1:8000/info' \\
       -H 'accept: application/json' \\
       -H 'Authorization: Bearer {token}'
     """
-    response = client.get("/organizer/info", headers={
+    response = client.get("/info", headers={
         "Authorization": f"Bearer {token}"
     })
 
