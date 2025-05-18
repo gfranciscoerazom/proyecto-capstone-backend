@@ -107,7 +107,7 @@ def test_add_repeated_staff_email(session: Session, client: TestClient, faker: F
             "email": "Patricio@udla.edu.ec",
             "first_name": "Patricio",
             "last_name": "Estrella",
-            "password": "Dinero555@"
+            "password": faker.password(length=10, special_chars=True, digits=True, upper_case=True, lower_case=True)
         }
     )
 

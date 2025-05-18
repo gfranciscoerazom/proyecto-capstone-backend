@@ -864,9 +864,9 @@ class RegistrationPublic(RegistrationBase):
         title="Created At",
         description="Registration creation date and time, in Quito timezone"
     )
-    reaction: int = Field(
+    reaction: Reaction = Field(
         title="Reaction",
-        description="User reaction (1: Liked, -1: Disliked, 0: No reaction)"
+        description="User reaction"
     )
     reaction_date: datetime | None = Field(
         title="Reaction Date",

@@ -5,7 +5,7 @@ from uuid import UUID
 import sqlalchemy
 from deepface import DeepFace  # type: ignore
 from fastapi import (APIRouter, BackgroundTasks, File, Form, HTTPException,
-                     Path, Security, UploadFile, status)
+                     Path, Query, Security, UploadFile, status)
 from fastapi.responses import FileResponse
 from sqlmodel import select
 
@@ -13,9 +13,11 @@ from app.db.database import (Assistant, AssistantCreate, Event, Registration,
                              RegistrationPublic, SessionDependency, User,
                              UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
+from app.helpers.dateAndTime import get_quito_time
 from app.helpers.files import safe_path_join
 from app.helpers.mail import send_new_assistant_email
 from app.helpers.validations import save_user_image
+from app.models.Reaction import Reaction
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
@@ -489,6 +491,95 @@ def register_companion_to_event(
         companion=companion,
         companion_type=companion_type,
     )
+
+    session.add(registration)
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        ) from e
+    session.refresh(registration)
+
+    return registration
+
+
+@router.get(
+    "/react/{user_id}/{event_id}",
+    response_model=RegistrationPublic,
+
+    summary="React to an event",
+    response_description="Successful Response",
+)
+def react_to_event(
+    user_id: Annotated[
+        int,
+        Path(
+            title="User ID",
+            description="The ID of the user to react to the event",
+        )
+    ],
+    event_id: Annotated[
+        int,
+        Path(
+            title="Event ID",
+            description="The ID of the event to react to",
+        )
+    ],
+    reaction: Annotated[
+        Reaction,
+        Query(
+            title="Reaction",
+            description="The reaction to the event",
+        )
+    ],
+    session: SessionDependency
+) -> Registration:
+    """
+    Endpoint to react to an event.
+
+    This endpoint allows users to react to an event by providing the user ID,
+    event ID, and the reaction.
+
+    \f
+
+    :param user_id: The ID of the user reacting to the event
+    :type user_id: int
+    :param event_id: The ID of the event to react to
+    :type event_id: int
+    :param reaction: The reaction to the event
+    :type reaction: Reaction
+    :param session: The database session
+    :type session: SessionDependency
+    """
+
+    if not (user := session.get(User, user_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    if not (registration := session.exec(
+        select(Registration).
+        where(
+            Registration.companion_id == user.id,
+            Registration.event_id == event.id
+        )
+    ).first()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registration not found",
+        )
+
+    registration.reaction = reaction
+    registration.reaction_date = get_quito_time()
 
     session.add(registration)
     try:
