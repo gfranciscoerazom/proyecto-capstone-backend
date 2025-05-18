@@ -1,7 +1,7 @@
-from enum import IntEnum
+from enum import StrEnum, auto
 
 
-class Reaction(IntEnum):
-    DISLIKE = -1
-    NO_REACTION = 0
-    LIKE = 1
+class Reaction(StrEnum):
+    DISLIKE = auto()
+    NO_REACTION = auto()
+    LIKE = auto()

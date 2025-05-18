@@ -12,22 +12,23 @@ This module contains the following things:
 - middlewares: Middlewares that add custom headers to the HTTP response.
 - Entrypoint: The main entrypoint for the application.
 """
-from io import StringIO
+import json
 import pathlib as pl
 import time
+from io import StringIO
 from typing import Annotated, Any, Callable
 
 import logfire
-import requests
 import pandas as pd
+import requests
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.concurrency import asynccontextmanager
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
-from app.db.database import (User, authenticate_user, create_db_and_tables,
-                             engine)
+from app.db.database import (SessionDependency, User, UserPublic, create_db_and_tables,
+                             engine, get_current_active_user)
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import tags_metadata
@@ -77,27 +78,21 @@ async def lifespan(app: FastAPI):
             session.add(admin_user)
             session.commit()
 
-            tables_urls = (
-                # Organizers
-                ("user", "https://api.mockaroo.com/api/e70b53c0?count=29&key=f4035dc0"),
-                # Events
-                ("event", "https://api.mockaroo.com/api/d4e79e50?count=250&key=f4035dc0"),
-                # Events Dates
-                ("eventdate", "https://api.mockaroo.com/api/1fafe150?count=1000&key=f4035dc0"),
-                # Staff
-                ("user", "https://api.mockaroo.com/api/64205490?count=50&key=f4035dc0"),
-                # Assistants
-                ("user", "https://api.mockaroo.com/api/db4b6610?count=1000&key=f4035dc0"),
-                # Assistants extra data
-                ("assistant", "https://api.mockaroo.com/api/af230500?count=1000&key=f4035dc0"),
-                # Registration
-                ("registration", "https://api.mockaroo.com/api/e851c8c0?count=1000&key=f4035dc0"),
-            )
+            if settings.ENVIRONMENT == "development":
+                # Populate the database with mock data
+                with open("./data/mock/tables_urls.json", "r") as file:
+                    tables_urls = json.load(file)
 
-            for table, url in tables_urls:
-                response = requests.get(url)
-                df = pd.read_csv(StringIO(response.text))  # type: ignore
-                df.to_sql(table, con=engine, if_exists="append", index=False)
+                for table, url in tables_urls:
+                    response = requests.get(url)
+                    df = pd.read_csv(StringIO(response.text))  # type: ignore
+                    if table == "staffeventlink":
+                        df.drop_duplicates(inplace=True)
+                    elif table == "attendance":
+                        df.drop_duplicates(
+                            subset=["event_date_id", "registration_id"], inplace=True)
+                    df.to_sql(table, con=engine,
+                              if_exists="append", index=False)
 
     yield
 
@@ -140,48 +135,48 @@ Tutored by:
 * [GitHub Repository](https://github.com/gfranciscoerazom/proyecto-capstone-backend)
 
 ```
-                                                                           #                        
-                                      ###############                    ####                       
-                                ########################               #####                        
-                            ###########            ######            ######                         
-                         #########                   #####         ######                           
-                      ########                        ####       ######                             
-                                                     #####     ######                               
-                                                     ####     ######                                
-                                                    ####    #####                                   
-                                                  #####   ######                                    
-                                                ######  ######                                      
-                                              ######  ######                                        
-                                            ######  ######                                          
-           #####                ################  ###### #############                              
-        ########             #################   #####   ###############                            
-     ##########      ###   ######      #####   #####                #######                         
-   ##########     ###### ######      ######  #####       ##############################             
-   ### #####    #############      ######  ######    ############  #####       #############        
-      ####   ######## #####      ######  ######   #######        #####                    ######    
-    #####  #########  ####     ######  ######   #####         ######                                
-   #### ####### ###  ####    ######  ######    ####      #########                                  
-  ##########   ##### ############   #####     #################           #######                   
-  #######             #########    ####        ###########                                          
-                         #                                                                          
-                                                                                                    
-                                                                                                    
-                                                                                                    
- _______ __                              __                                           __ __         
+                                                                           #
+                                      ###############                    ####
+                                ########################               #####
+                            ###########            ######            ######
+                         #########                   #####         ######
+                      ########                        ####       ######
+                                                     #####     ######
+                                                     ####     ######
+                                                    ####    #####
+                                                  #####   ######
+                                                ######  ######
+                                              ######  ######
+                                            ######  ######
+           #####                ################  ###### #############
+        ########             #################   #####   ###############
+     ##########      ###   ######      #####   #####                #######
+   ##########     ###### ######      ######  #####       ##############################
+   ### #####    #############      ######  ######    ############  #####       #############
+      ####   ######## #####      ######  ######   #######        #####                    ######
+    #####  #########  ####     ######  ######   #####         ######
+   #### ####### ###  ####    ######  ######    ####      #########
+  ##########   ##### ############   #####     #################           #######
+  #######             #########    ####        ###########
+                         #
+
+
+
+ _______ __                              __                                           __ __
 |    ___|  |    .--------.--.--.-----.--|  |.-----.    .-----.-----.----.-----.-----.|__|  |_.---.-.
 |    ___|  |    |        |  |  |     |  _  ||  _  |    |     |  -__|  __|  -__|__ --||  |   _|  _  |
 |_______|__|    |__|__|__|_____|__|__|_____||_____|    |__|__|_____|____|_____|_____||__|____|___._|
-                                                                                                    
-                    __                                                                              
-.-----.-----.-----.|  |_.-----.    .-----.--.--.-----.    .---.-.--------.-----.                    
-|  _  |  -__|     ||   _|  -__|    |  _  |  |  |  -__|    |  _  |        |  -__|                    
-|___  |_____|__|__||____|_____|    |__   |_____|_____|    |___._|__|__|__|_____|                    
-|_____|                               |__|                                                          
- __                                    __                                                           
-|  |.-----.    .-----.--.--.-----.    |  |--.---.-.----.-----.                                      
-|  ||  _  |    |  _  |  |  |  -__|    |     |  _  |  __|  -__|                                      
-|__||_____|    |__   |_____|_____|    |__|__|___._|____|_____|                                      
-                  |__|                                                                              
+
+                    __
+.-----.-----.-----.|  |_.-----.    .-----.--.--.-----.    .---.-.--------.-----.
+|  _  |  -__|     ||   _|  -__|    |  _  |  |  |  -__|    |  _  |        |  -__|
+|___  |_____|__|__||____|_____|    |__   |_____|_____|    |___._|__|__|__|_____|
+|_____|                               |__|
+ __                                    __
+|  |.-----.    .-----.--.--.-----.    |  |--.---.-.----.-----.
+|  ||  _  |    |  _  |  |  |  -__|    |     |  _  |  __|  -__|
+|__||_____|    |__   |_____|_____|    |__|__|___._|____|_____|
+                  |__|
 ```
 """,
     version="0.0.1",
@@ -209,6 +204,7 @@ logfire.configure(
     ),
 )
 logfire.instrument_fastapi(app, capture_headers=True)
+logfire.instrument_sqlalchemy(engine=engine)
 
 
 # region Routers
@@ -227,54 +223,55 @@ app.include_router(events.router)
 )
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    session: SessionDependency
 ) -> Token:
-    """
-    Endpoint to obtain an access token.
-
-    This endpoint allows users to obtain an access token by providing their
-    username and password. The token can then be used to authenticate subsequent
-    requests.
+    """Obtain an access token using username, password and scopes.
 
     \f
 
-    Args:
-        form_data (OAuth2PasswordRequestForm): The form data containing the
-            username and password.
+    :param form_data: The form data containing the username, password and scopes.
+    :type form_data: OAuth2PasswordRequestForm
 
-    Returns:
-        Token: An object containing the access token and token type.
+    :param session: The database session to make queries.
+    :type session: SessionDependency
 
-    Raises:
-        HTTPException: If the username or password is incorrect, an HTTP 401
-            Unauthorized error is raised.
+    :return: An object containing the access token and token type.
+    :rtype: Token
     """
-    if not (
-        user := authenticate_user(
-            email=form_data.username,
-            password=form_data.password
-        )
-    ):
+    if not (user := session.exec(
+        select(User).where(User.email == form_data.username)
+    ).first()) or not user.verify_password(form_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    allowed_scopes: set[Scopes] = user.role.get_allowed_scopes()
+    if len(form_data.scopes) >= 1:
+        allowed_scopes: set[Scopes] = user.role.get_scopes()
 
-    if not all(scope in allowed_scopes for scope in form_data.scopes):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not enough permissions",
-            headers={
-                "WWW-Authenticate": f'Bearer scope="{", ".join(scope.value for scope in allowed_scopes)}"'
-            },
+        if not any(scope in allowed_scopes for scope in form_data.scopes):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions",
+                headers={
+                    "WWW-Authenticate": f'Bearer scope="{", ".join(scope.value for scope in allowed_scopes)}"'
+                },
+            )
+
+        access_token: str = create_access_token(
+            data={
+                "sub": user.email,
+                "scopes": form_data.scopes,
+            }
         )
+
+        return Token(access_token=access_token)
 
     access_token: str = create_access_token(
         data={
             "sub": user.email,
-            "scopes": form_data.scopes,
+            "scopes": list(user.role.get_scopes()),
         }
     )
 
@@ -284,15 +281,44 @@ async def login_for_access_token(
 @app.get("/")
 async def read_main():
     """
-    This function is the main entry point for the application. 
-    It handles GET requests to the root path ("/") and returns a JSON response 
+    This function is the main entry point for the application.
+    It handles GET requests to the root path ("/") and returns a JSON response
     with a message "Hello World".
 
-    Returns:
-        dict: A dictionary containing the message "Hello World".
+    \f
+
+    :return: A JSON response with a message "Hello World".
+    :rtype: dict[str, str]
     """
     return {"msg": "Hello World"}
 
+
+@app.get(
+    "/info",
+    response_model=UserPublic,
+
+    summary="Get current user",
+    response_description="Successful Response with the current user",
+)
+async def read_users_me(
+    current_user: Annotated[
+        User,
+        Depends(
+            get_current_active_user,
+        )
+    ],
+) -> User:
+    """Get the information of the current authenticated user.
+
+    \f
+
+    :param current_user: The current authenticated user.
+    :type current_user: User
+
+    :return: The current authenticated user.
+    :rtype: User
+    """
+    return current_user
 # region Middleware
 
 
@@ -302,17 +328,16 @@ async def add_process_time_header(
     call_next: Callable[[Request], Any]
     # call_next: (Request) -> Any
 ):
-    """
-    Middleware to add a custom header indicating the processing time of a request.
+    """Middleware to add a custom headers for example indicating the processing time of a request.
 
-    Args:
-        request (Request): The incoming HTTP request.
-        call_next (Callable[[Request], Any]): A function that processes the request
-        and returns a response.
+    :param request: The incoming HTTP request.
+    :type request: Request
 
-    Returns:
-        Response: The HTTP response with an added "X-Process-Time" header
-        indicating the time taken to process the request.
+    :param call_next: A function that processes the request and returns a response.
+    :type call_next: Callable[[Request], Any]
+
+    :return: The HTTP response with added headers.
+    :rtype: Any
     """
     start_time = time.perf_counter()
     response = await call_next(request)

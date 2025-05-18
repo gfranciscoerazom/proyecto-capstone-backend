@@ -12,7 +12,6 @@ class Scopes(StrEnum):
 
     Represents the different scopes that can be assigned to a user in the API.
     """
-    USER = auto()
     ORGANIZER = auto()
     ASSISTANT = auto()
     STAFF = auto()
@@ -21,7 +20,6 @@ class Scopes(StrEnum):
 
 # region variables
 scopes: dict[Scopes, str] = {
-    Scopes.USER: "User with basic privileges",
     Scopes.ORGANIZER: "User with organizer privileges",
     Scopes.ASSISTANT: "User with assistant privileges",
     Scopes.STAFF: "User with staff privileges",

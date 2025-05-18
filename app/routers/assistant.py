@@ -5,7 +5,7 @@ from uuid import UUID
 import sqlalchemy
 from deepface import DeepFace  # type: ignore
 from fastapi import (APIRouter, BackgroundTasks, File, Form, HTTPException,
-                     Path, Security, UploadFile, status)
+                     Path, Query, Security, UploadFile, status)
 from fastapi.responses import FileResponse
 from sqlmodel import select
 
@@ -13,13 +13,17 @@ from app.db.database import (Assistant, AssistantCreate, Event, Registration,
                              RegistrationPublic, SessionDependency, User,
                              UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
+from app.helpers.dateAndTime import get_quito_time
 from app.helpers.files import safe_path_join
 from app.helpers.mail import send_new_assistant_email
 from app.helpers.validations import save_user_image
+from app.models.Reaction import Reaction
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
+from app.models.TypeCompanion import TypeCompanion
 from app.security.security import get_password_hash
+from app.settings.config import settings
 
 router = APIRouter(
     prefix="/assistant",
@@ -27,41 +31,10 @@ router = APIRouter(
 )
 
 
-@router.get(
-    "/info",
-    response_model=UserAssistantPublic,
-
-    summary="Get current user",
-    response_description="Successful Response with the current user",
-)
-async def read_users_me(
-    current_user: Annotated[
-        User,
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.USER]
-        )
-    ],
-) -> User:
-    """
-    Retrieve the current authenticated user.
-
-    This endpoint returns the details of the currently authenticated user.
-
-    \f
-
-    Args:
-        current_user (User): The current active user, obtained from the dependency injection.
-
-    Returns:
-        UserAssistant: The current authenticated user.
-    """
-    return current_user
-
-
 @router.post(
     "/add",
     response_model=UserAssistantPublic,
+    status_code=status.HTTP_201_CREATED,
 
     summary="Add a new user",
     response_description="Successful Response with the new user",
@@ -197,7 +170,8 @@ async def get_assistants_by_image(
     images_df = DeepFace.find(  # type: ignore
         img_path=str(temp_image_path),
         db_path=str(pl.Path("./data/people_imgs")),
-        model_name="Facenet512",
+        model_name=settings.FACE_RECOGNITION_AI_MODEL,
+        threshold=settings.FACE_RECOGNITION_AI_THRESHOLD,
         detector_backend="yunet",
     )
 
@@ -360,7 +334,7 @@ def register_to_event(
         User,
         Security(
             get_current_active_user,
-            scopes=[Scopes.USER]
+            scopes=[Scopes.ASSISTANT]
         )
     ],
 ) -> Registration:
@@ -382,6 +356,12 @@ def register_to_event(
     Raises:
         HTTPException: If the event is not found in the database.
     """
+    if not (user := session.get(User, current_user.id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
     if not (event := session.get(Event, event_id)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -396,8 +376,9 @@ def register_to_event(
 
     registration: Registration = Registration(
         event=event,
-        assistant=current_user,
+        assistant=user,
         companion=assistant,
+        companion_type=TypeCompanion.ZERO_GRADE
     )
 
     session.add(registration)
@@ -435,12 +416,19 @@ def register_companion_to_event(
             description="The ID of the companion to register to the event",
         )
     ],
+    companion_type: Annotated[
+        TypeCompanion,
+        Form(
+            title="Companion type",
+            description="The type of the companion to register to the event",
+        )
+    ],
     session: SessionDependency,
     current_user: Annotated[
         User,
         Security(
             get_current_active_user,
-            scopes=[Scopes.USER]
+            scopes=[Scopes.ASSISTANT]
         )
     ],
 ) -> Registration:
@@ -464,6 +452,12 @@ def register_companion_to_event(
     Raises:
         HTTPException: If the event or the companion is not found in the database.
     """
+    if not (user := session.get(User, current_user.id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
     if not (event := session.get(Event, event_id)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -476,11 +470,116 @@ def register_companion_to_event(
             detail="Companion not found",
         )
 
+    # Verificar que el usuario esté registrado en el evento al que quiere registrar a su acompañante
+    user_events = session.exec(
+        select(Event).
+        join(Registration).
+        where(
+            Registration.assistant_id == user.id
+        )
+    ).all()
+
+    if event not in user_events:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not registered for this event",
+        )
+
     registration: Registration = Registration(
         event=event,
-        assistant=current_user,
+        assistant=user,
         companion=companion,
+        companion_type=companion_type,
     )
+
+    session.add(registration)
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        ) from e
+    session.refresh(registration)
+
+    return registration
+
+
+@router.get(
+    "/react/{user_id}/{event_id}",
+    response_model=RegistrationPublic,
+
+    summary="React to an event",
+    response_description="Successful Response",
+)
+def react_to_event(
+    user_id: Annotated[
+        int,
+        Path(
+            title="User ID",
+            description="The ID of the user to react to the event",
+        )
+    ],
+    event_id: Annotated[
+        int,
+        Path(
+            title="Event ID",
+            description="The ID of the event to react to",
+        )
+    ],
+    reaction: Annotated[
+        Reaction,
+        Query(
+            title="Reaction",
+            description="The reaction to the event",
+        )
+    ],
+    session: SessionDependency
+) -> Registration:
+    """
+    Endpoint to react to an event.
+
+    This endpoint allows users to react to an event by providing the user ID,
+    event ID, and the reaction.
+
+    \f
+
+    :param user_id: The ID of the user reacting to the event
+    :type user_id: int
+    :param event_id: The ID of the event to react to
+    :type event_id: int
+    :param reaction: The reaction to the event
+    :type reaction: Reaction
+    :param session: The database session
+    :type session: SessionDependency
+    """
+
+    if not (user := session.get(User, user_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    if not (registration := session.exec(
+        select(Registration).
+        where(
+            Registration.companion_id == user.id,
+            Registration.event_id == event.id
+        )
+    ).first()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registration not found",
+        )
+
+    registration.reaction = reaction
+    registration.reaction_date = get_quito_time()
 
     session.add(registration)
     try:

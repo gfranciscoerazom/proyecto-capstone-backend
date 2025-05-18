@@ -3,18 +3,21 @@ This module defines the API endpoints for user management,
 including authentication, registration, and user information retrieval.
 """
 
-from typing import Annotated
+import os
+from typing import Annotated, Any
 
 import logfire
 import sqlalchemy
-from fastapi import APIRouter, Form, HTTPException, Security, status
+from fastapi import APIRouter, Form, HTTPException, Query, Security, status
 
 from app.db.database import (SessionDependency, User, UserCreate, UserPublic,
                              get_current_active_user)
+from app.models.FaceRecognitionAiModel import FaceRecognitionAiModel
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
 from app.security.security import get_password_hash
+from app.settings.config import settings, update_settings
 
 router = APIRouter(
     prefix="/organizer",
@@ -22,38 +25,6 @@ router = APIRouter(
 )
 
 # region Endpoints
-
-
-@router.get(
-    "/info",
-    response_model=UserPublic,
-
-    summary="Get current user",
-    response_description="Successful Response with the current user",
-)
-async def read_users_me(
-    current_user: Annotated[
-        User,
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.USER]
-        )
-    ],
-) -> User:
-    """
-    Retrieve the current authenticated user.
-
-    This endpoint returns the details of the currently authenticated user.
-
-    \f
-
-    Args:
-        current_user (User): The current active user, obtained from the dependency injection.
-
-    Returns:
-        UserPublic: The current authenticated user.
-    """
-    return current_user
 
 
 @router.post(
@@ -110,5 +81,49 @@ async def add_user(
     session.refresh(db_user)
     logfire.info(f"User {db_user.email} added by {current_user.email}")
     return db_user
+
+
+@router.patch(
+    "/change-settings",
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ORGANIZER],
+        )
+    ],
+    summary="Change the face recognition AI model",
+)
+async def change_face_recognition_ai_model(
+    model_name: Annotated[
+        FaceRecognitionAiModel | None,
+        Query(
+            title="Face Recognition AI Model",
+            description="The name of the face recognition AI model to be set",
+        )
+    ] = None,
+    threshold: Annotated[
+        float | None,
+        Query(
+            title="Face Recognition AI Threshold",
+            description="The threshold for face recognition AI model to be set (0 to reset)",
+        )
+    ] = None,
+) -> dict[str, Any]:
+    if model_name:
+        os.environ["FACE_RECOGNITION_AI_MODEL"] = model_name.value
+
+    if threshold:
+        os.environ["FACE_RECOGNITION_AI_THRESHOLD"] = str(threshold)
+
+    if threshold == 0:
+        del os.environ["FACE_RECOGNITION_AI_THRESHOLD"]
+
+    update_settings()
+
+    return {
+        "model": settings.FACE_RECOGNITION_AI_MODEL,
+        "threshold": settings.FACE_RECOGNITION_AI_THRESHOLD,
+    }
+
 
 # endregion

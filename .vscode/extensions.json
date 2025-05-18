@@ -31,6 +31,7 @@
 		"visualstudioexptteam.vscodeintellicode-completions",
 		"mtxr.sqltools",
 		"mtxr.sqltools-driver-sqlite",
+		"circleci.circleci"
 	],
 	// List of extensions recommended by VS Code that should not be recommended for users of this workspace.
 	"unwantedRecommendations": []

@@ -1,36 +1,35 @@
 """
 This module defines the application's settings using Pydantic's BaseSettings
 
-It centralizes configuration parameters, loading them from environment variables 
-with the help of `pydantic-settings`. These settings are crucial for various 
+It centralizes configuration parameters, loading them from environment variables
+with the help of `pydantic-settings`. These settings are crucial for various
 aspects of the application, including:
 
 - **Security:** Managing the secret key and algorithm for JWT token generation.
 - **Database:** Specifying the database connection URL.
 - **Token Management:** Defining the token expiration time.
 
-The settings are made accessible throughout the application using FastAPI's 
+The settings are made accessible throughout the application using FastAPI's
 dependency injection system via the `SettingsDependency` variable.
 
 **Key Settings:**
 
-- `SECRET_KEY`: A secret key used for signing JWT tokens. It should be a 
+- `SECRET_KEY`: A secret key used for signing JWT tokens. It should be a
    strong, randomly generated string.
 - `ALGORITHM`: The algorithm used for signing JWT tokens (e.g., HS256).
-- `ACCESS_TOKEN_EXPIRE_MINUTES`: The duration (in minutes) for which access 
+- `ACCESS_TOKEN_EXPIRE_MINUTES`: The duration (in minutes) for which access
    tokens are valid.
-- `DATABASE_URL`: The connection URL for the database, including the database 
+- `DATABASE_URL`: The connection URL for the database, including the database
    type, credentials, and database name.
 
-This approach ensures that configuration is well-organized, type-safe, and 
+This approach ensures that configuration is well-organized, type-safe, and
 easily accessible across the application.
 """
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Final
+from typing import Final
 
-from fastapi import Depends
 from pydantic import EmailStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -42,6 +41,11 @@ class Settings(BaseSettings):
 
     Settings for the application that are loaded from the environment variables.
     """
+    ENVIRONMENT: Final[str] = Field(
+        title="Environment",
+        description="Environment in which the application is running",
+        examples=["development", "production"],
+    )
     SECRET_KEY: Final[str] = Field(
         title="Secret Key",
         description="Secret key for JWT token",
@@ -87,10 +91,23 @@ class Settings(BaseSettings):
         description="Token to connect to the system",
         examples=["xxxx_xx_xx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
     )
+    FACE_RECOGNITION_AI_MODEL: Final[str] = Field(
+        title="Face Recognition AI Model",
+        description="Model for face recognition",
+        examples=["VGG-Face", "Facenet", "Facenet512", "OpenFace", "DeepFace",
+                  "DeepID", "ArcFace", "Dlib", "SFace", "GhostFaceNet",
+                  "Buffalo_L",],
+    )
+    FACE_RECOGNITION_AI_THRESHOLD: float | None = Field(
+        default=None,
+        title="Face Recognition AI Threshold",
+        description="Threshold for face recognition",
+        examples=[0.5, 0.6, 0.7],
+    )
 
     model_config = SettingsConfigDict(
         env_file=Path.cwd() / ".env",
-        env_file_encoding='utf-8'
+        env_file_encoding='utf-8',
     )
 # endregion
 
@@ -98,18 +115,22 @@ class Settings(BaseSettings):
 # region functions
 @lru_cache
 def get_settings() -> Settings:
-    """
-    Get the settings for the application. This function is cached.
+    """Returns the settings for the application.
+    This function uses the `lru_cache` decorator to cache the settings object,
+    so that it is only loaded once and reused for subsequent calls.
 
-    Returns:
-        Settings: The settings for the application.
+    :return: Settings object containing the application settings.
+    :rtype: Settings
     """
     return Settings()  # type: ignore
+
+
+def update_settings():
+    settings = get_settings()
+    settings.__init__()  # type: ignore
 # endregion
 
 
 # region variables
 settings: Settings = get_settings()
-
-SettingsDependency = Annotated[Settings, Depends(get_settings)]
 # endregion

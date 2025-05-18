@@ -1,0 +1,70 @@
+.dockerignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Test, cache, coverage
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+tests/
+
+# CircleCI
+.circleci/
+
+# GitHub
+.github/
+
+# IDE/editor config
+.vscode/
+.idea/
+*.iml
+
+# Sonar
+.sonarlint/
+.sonar/
+.sonarqube/
+.scannerwork/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Data and temp
+data/events_imgs/
+data/people_imgs/
+data/temp_imgs/
+data/mock/
+data/*.db
+
+# Docs build
+docs/
+docs/_build/
+CITATION.cff
+LICENSE
+
+# Otros archivos que no quieras copiar
+reset_app.py
+Containerfile

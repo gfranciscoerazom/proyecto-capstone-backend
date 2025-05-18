@@ -17,7 +17,7 @@ class Role(StrEnum):
     STAFF = auto()
     ORGANIZER = auto()
 
-    def get_allowed_scopes(self) -> set[Scopes]:
+    def get_scopes(self) -> set[Scopes]:
         """
         Get the allowed scopes for the role.
 
@@ -25,8 +25,8 @@ class Role(StrEnum):
             set[str]: A list of allowed scopes for the role.
         """
         role_scopes: dict[Role, set[Scopes]] = {
-            Role.ASSISTANT: {Scopes.USER, Scopes.ASSISTANT},
-            Role.STAFF: {Scopes.USER, Scopes.STAFF},
-            Role.ORGANIZER: {Scopes.USER, Scopes.ORGANIZER}
+            Role.ASSISTANT: {Scopes.ASSISTANT},
+            Role.STAFF: {Scopes.STAFF},
+            Role.ORGANIZER: {Scopes.ORGANIZER}
         }
         return role_scopes.get(self, set())

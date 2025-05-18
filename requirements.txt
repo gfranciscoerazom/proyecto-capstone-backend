@@ -9,5 +9,9 @@ pytest
 isort
 tf-keras
 logfire[fastapi]
+logfire[sqlalchemy]
 pymysql
 cryptography
+pytest-xdist
+pytest-xdist[psutil]
+pytest-cov

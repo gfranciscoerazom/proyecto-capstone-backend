@@ -18,6 +18,16 @@
                 "uriFormat": "http://127.0.0.1:%s/docs",
                 "action": "openExternally",
             },
-        }
+        },
+        {
+            "name": "Python Debugger: FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "fastapi",
+            "args": [
+                "dev",
+            ],
+            "jinja": true,
+        },
     ]
 }
