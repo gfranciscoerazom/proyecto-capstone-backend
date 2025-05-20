@@ -2,6 +2,7 @@ import pathlib as pl
 from typing import Annotated
 from uuid import UUID
 
+from PIL import UnidentifiedImageError
 import sqlalchemy
 from deepface import DeepFace  # type: ignore
 from fastapi import (APIRouter, BackgroundTasks, File, Form, HTTPException,
@@ -73,9 +74,46 @@ async def add_assistant(
     user: UserCreate = user_assistant.get_user()
     assistant: AssistantCreate = user_assistant.get_assistant()
 
+    async def delete_temp_image(temp_image_path: pl.Path):
+        if temp_image_path.exists():
+            temp_image_path.unlink()
+
+    temp_image_uuid: UUID = await save_user_image(assistant.image, folder="temp_imgs")
+    temp_image_path: pl.Path = pl.Path(
+        "./data/temp_imgs"
+    ) / f"{temp_image_uuid}.png"
+
+    # try:
+    images_df = DeepFace.find(  # type: ignore
+        img_path=str(temp_image_path),
+        db_path=str(pl.Path("./data/people_imgs")),
+        model_name=settings.FACE_RECOGNITION_AI_MODEL,
+        threshold=settings.FACE_RECOGNITION_AI_THRESHOLD,
+        detector_backend="yunet",
+    )
+    # except UnidentifiedImageError:
+
+    #     print("No hay una persona con esa img uwu")
+    #     images_df = []
+
+    if len(images_df[0]) > 1:
+        await delete_temp_image(temp_image_path)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="There is more than one assistant with the same image",
+        )
+
     hashed_password: bytes = get_password_hash(user.password)
 
-    image_uuid: UUID = await save_user_image(assistant.image)
+    # image_uuid: UUID = await save_user_image(assistant.image)
+    # En vez de guardar la imagen en el disco mueve la imagen que está en temp_imgs a people_imgs
+    image_uuid: UUID = temp_image_uuid
+    image_path: pl.Path = pl.Path(
+        f"./data/temp_imgs/{image_uuid}.png"
+    )
+    image_path.rename(
+        pl.Path(f"./data/people_imgs/{image_uuid}.png")
+    )
 
     extra_data_user: dict[str, bytes | Role] = {
         "hashed_password": hashed_password,
@@ -590,5 +628,106 @@ def react_to_event(
             detail=str(e)
         ) from e
     session.refresh(registration)
+
+    return registration
+
+
+@router.get(
+    "/get-registered-events",
+    response_model=list[RegistrationPublic],
+
+    summary="Get registered events",
+    response_description="Successful Response with the list of registered events",
+)
+def get_registered_events(
+    current_user: Annotated[
+        User,
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ASSISTANT]
+        )
+    ],
+    session: SessionDependency
+):
+    """
+    Endpoint to get registered events for a user.
+
+    This endpoint allows users to retrieve a list of events they are registered for.
+
+    :param user_id: The ID of the user to get registered events for
+    :type user_id: int
+    :param session: The database session
+    :type session: SessionDependency
+    """
+    registrations = session.exec(
+        select(Registration).
+        where(Registration.assistant_id == current_user.id,
+              Registration.companion_id == current_user.id)
+    ).all()
+
+    return registrations
+
+# response = requests.post(
+#     f"{settings.API_URL}/assistant/unregister-from-event/{event_id}",
+#     headers={"Authorization": f"Bearer {access_token}"}
+# )
+
+
+@router.delete(
+    "/unregister-from-event/{event_id}",
+    response_model=RegistrationPublic,
+
+    summary="Unregister from an event",
+    response_description="Successful Response with the unregistration",
+)
+def unregister_from_event(
+    event_id: Annotated[
+        int,
+        Path(
+            title="Event ID",
+            description="The ID of the event to unregister from",
+        )
+    ],
+    session: SessionDependency,
+    current_user: Annotated[
+        User,
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ASSISTANT]
+        )
+    ],
+):
+    """Endpoint to unregister from an event.
+    This endpoint allows users to unregister from an event by providing the event's ID.
+
+    :param event_id: The ID of the event to unregister from
+    :type event_id: int
+    :param session: The database session
+    :type session: SessionDependency
+    :param current_user: The user who is unregistering from the event
+    :type current_user: User
+    """
+    registration = session.exec(
+        select(Registration).
+        where(
+            Registration.event_id == event_id,
+            Registration.companion_id == current_user.id
+        )
+    ).first()
+
+    if not registration:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registration not found",
+        )
+
+    session.delete(registration)
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        ) from e
 
     return registration

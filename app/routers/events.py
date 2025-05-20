@@ -149,12 +149,12 @@ async def add_event(
 @router.get(
     "/{event_id}",
     response_model=EventPublicWithEventDate,
-    dependencies=[
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.ORGANIZER]
-        )
-    ],
+    # dependencies=[
+    #     Security(
+    #         get_current_active_user,
+    #         scopes=[Scopes.ORGANIZER]
+    #     )
+    # ],
 
     summary="Get an event by ID",
     response_description="Successful Response with the event",

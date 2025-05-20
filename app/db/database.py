@@ -283,9 +283,10 @@ class User(UserBase, table=True):
         """Validate that if the role is assistant, the email is not from the UDLA domain. (udla.edu.ec) and if the role is organizer or staff, the email is from the UDLA domain."""
         match self.role:
             case Role.ASSISTANT:
-                if self.email.endswith("udla.edu.ec"):
+                if self.email.endswith("udla.edu.ec") or not (self.email.endswith("@gmail.com") or self.email.endswith("@hotmail.com") or self.email.endswith("@outlook.com") or self.email.endswith("@protonmail.com") or self.email.endswith("@yahoo.com")):
                     raise ValueError(
                         "Assistant email cannot be from UDLA domain")
+
             case Role.ORGANIZER | Role.STAFF:
                 if not self.email.endswith("udla.edu.ec"):
                     raise ValueError(
