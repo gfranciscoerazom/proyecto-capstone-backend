@@ -24,11 +24,13 @@ import requests
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.concurrency import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
-from app.db.database import (SessionDependency, User, UserPublic, create_db_and_tables,
-                             engine, get_current_active_user)
+from app.db.database import (SessionDependency, User, UserPublic,
+                             create_db_and_tables, engine,
+                             get_current_active_user)
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import tags_metadata
@@ -344,6 +346,16 @@ async def add_process_time_header(
     process_time = time.perf_counter() - start_time
     response.headers["X-Process-Time"] = str(process_time)
     return response
+
+
+app.add_middleware(
+    CORSMiddleware,
+    # Cambia el puerto si es necesario
+    allow_origins=["http://127.0.0.1:8001"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # endregion
 
 

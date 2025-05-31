@@ -518,4 +518,87 @@ async def add_attendance(
     return new_attendance
 
 
+@router.post(
+    "/add/attendance/{event_date_id}/{event_id}/{companion_id}",
+    response_model=Attendance,
+    summary="Add an attendance to an event",
+    response_description="The added attendance",
+)
+async def add_attendance_by_companion(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event date ID",
+            description="The ID of the event date to add an attendance to.",
+        )
+    ],
+    event_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event ID",
+            description="The ID of the event to add an attendance to.",
+        )
+    ],
+    companion_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Companion ID",
+            description="The ID of the companion to add an attendance to.",
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Endpoint to add an attendance to an event.
+
+    This endpoint allows users to register attendance for a specific event date by providing the event ID, event date ID, and companion ID.
+
+    \f
+
+    :param event_date_id: The ID of the event date to add attendance to.
+    :type event_date_id: PositiveInt
+    :param event_id: The ID of the event to add attendance to.
+    :type event_id: PositiveInt
+    :param companion_id: The ID of the companion to add attendance for.
+    :type companion_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The added attendance.
+    :rtype: Attendance
+    """
+    if not (registration := session.exec(
+        select(Registration)
+        .where(
+            Registration.event_id == event_id,
+            Registration.companion_id == companion_id,
+        )
+    ).first()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registration not found",
+        )
+
+    if not (event_date := session.get(EventDate, event_date_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event date not found",
+        )
+
+    attendance = Attendance(
+        event_date=event_date,
+        registration=registration,
+    )
+
+    session.add(attendance)
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        ) from e
+    session.refresh(attendance)
+
+    return attendance
+
 # endregion

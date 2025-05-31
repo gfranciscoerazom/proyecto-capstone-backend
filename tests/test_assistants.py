@@ -1,7 +1,8 @@
+from pathlib import Path
+
 from faker import Faker
 from fastapi import status
 from fastapi.testclient import TestClient
-from pathlib import Path
 
 
 def test_add_assistant_success(client: TestClient, token: str, faker: Faker):

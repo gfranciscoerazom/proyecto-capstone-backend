@@ -24,7 +24,8 @@ from app.models.Token import TokenData
 from app.models.TypeCapacity import TypeCapacity
 from app.models.TypeCompanion import TypeCompanion
 from app.models.TypeId import TypeId
-from app.security.security import oauth2_scheme, verify_password
+from app.security.security import (get_password_hash, oauth2_scheme,
+                                   verify_password)
 from app.settings.config import settings
 
 # region engine
@@ -325,6 +326,10 @@ class UserCreate(UserBase):
         title="Password",
         description="User password"
     )
+
+    def get_password_hash(self) -> bytes:
+        """Get the hashed password of the user."""
+        return get_password_hash(self.password)
 
 
 class UserUpdate(SQLModel):
