@@ -78,6 +78,7 @@ async def get_upcoming_events(
 @router.post(
     "/add",
     response_model=EventPublicWithEventDate,
+    status_code=status.HTTP_201_CREATED,
 
     summary="Add an event",
     response_description="The added event",
@@ -144,6 +145,37 @@ async def add_event(
 
     session.refresh(new_event)
     return new_event
+
+
+@router.get(
+    "/all",
+    response_model=list[EventPublicWithEventDate],
+)
+async def get_events(
+    session: SessionDependency
+):
+    """
+    Get all events.
+
+    This endpoint retrieves a list of all events in the system.
+
+    \f
+
+    :param session: The database session dependency to connect to the database.
+    :type session: SessionDependency
+
+    :return: A list of all events.
+    :rtype: list[EventPublicWithNoDeletedEventDate]
+    """
+    events = session.exec(
+        select(Event)
+    ).all()
+    if not events:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No events found",
+        )
+    return events
 
 
 @router.get(
@@ -600,5 +632,48 @@ async def add_attendance_by_companion(
     session.refresh(attendance)
 
     return attendance
+
+
+@router.delete(
+    "/{event_id}",
+    response_model=EventPublicWithEventDate,
+
+    summary="Delete an event",
+    response_description="The deleted event",
+)
+async def delete_event(
+    event_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event ID",
+            description="The ID of the event to be deleted.",
+        )
+    ],
+    session: SessionDependency,
+) -> Event:
+    """
+    Endpoint to delete an event.
+
+    This endpoint allows users to delete an event by its ID.
+
+    \f
+
+    :param event_id: The ID of the event to be deleted.
+    :type event_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The deleted event.
+    :rtype: Event
+    """
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    session.delete(event)
+    session.commit()
+
+    return event
 
 # endregion

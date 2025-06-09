@@ -464,7 +464,8 @@ class Event(EventBase, table=True):
         back_populates="organized_events"
     )
     event_dates: list["EventDate"] = Relationship(
-        back_populates="event"
+        back_populates="event",
+        cascade_delete=True,
     )
     registrations: list["Registration"] = Relationship(
         back_populates="event"
@@ -688,6 +689,7 @@ class EventDate(EventDateBase, table=True):
         default=0,
         foreign_key="event.id",
         index=True,
+        ondelete="CASCADE",
 
         title="Event ID",
         description="Foreign key to Event table"

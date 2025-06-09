@@ -2,14 +2,14 @@
 This module defines the API endpoints for user management,
 including authentication, registration, and user information retrieval.
 """
-
 from typing import Annotated
 
 import sqlalchemy
+from sqlmodel import select
 from fastapi import APIRouter, Form, HTTPException, Security, status
 
 from app.db.database import (Event, EventPublicWithEventDate,
-                             SessionDependency, User, UserCreate, UserPublic,
+                             SessionDependency, StaffEventLink, User, UserCreate, UserPublic,
                              get_current_active_user)
 from app.models.Role import Role
 from app.models.Scopes import Scopes
@@ -150,5 +150,50 @@ async def add_staff_to_event(
     session.commit()
     session.refresh(event)
     return event
+
+
+@router.get(
+    "/my-events",
+    response_model=list[EventPublicWithEventDate],
+    summary="Get all events where the current staff member is assigned",
+    response_description="List of events where the current staff member is assigned",
+)
+async def get_my_events(
+    current_user: Annotated[
+        User,
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.STAFF],
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Get all events where the current staff member is assigned.
+
+    This endpoint retrieves a list of events that the currently authenticated
+    staff member is assigned to.
+
+    :param current_user: The currently authenticated user.
+    :type current_user: User
+
+    :param session: Database session dependency to connect to the database.
+    :type session: SessionDependency
+
+    :return: A list of events where the current staff member is assigned.
+    :rtype: list[EventPublicWithEventDate]
+    """
+    events = list(session.exec(
+        select(Event).join(StaffEventLink).where(
+            StaffEventLink.staff_id == current_user.id
+        )
+    ).all())
+    if not events:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No events found for the current staff member",
+        )
+    return events
+
 
 # endregion

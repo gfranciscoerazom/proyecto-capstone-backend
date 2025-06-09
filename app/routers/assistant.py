@@ -1,5 +1,4 @@
 import pathlib as pl
-from re import A
 from typing import Annotated
 from uuid import UUID
 
@@ -8,7 +7,6 @@ from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
                      HTTPException, Path, Query, Security, UploadFile, status)
 from fastapi.responses import FileResponse
 from sqlmodel import select, and_
-from sqlalchemy.orm import aliased
 
 from app.db.database import (Assistant, AssistantCreate, Attendance, Event, EventDate, Registration,
                              RegistrationPublic, SessionDependency, User,
