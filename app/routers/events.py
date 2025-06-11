@@ -8,6 +8,7 @@ from fastapi import (APIRouter, Body, Form, HTTPException, Path, Query,
                      Security, status)
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
+import sqlalchemy.exc
 from sqlmodel import select
 
 from app.db.database import (Attendance, Event, EventCreate, EventDate,

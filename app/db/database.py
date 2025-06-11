@@ -285,7 +285,7 @@ class User(UserBase, table=True):
             case Role.ASSISTANT:
                 if self.email.endswith("udla.edu.ec") or not (self.email.endswith("@gmail.com") or self.email.endswith("@hotmail.com") or self.email.endswith("@outlook.com") or self.email.endswith("@protonmail.com") or self.email.endswith("@yahoo.com")):
                     raise ValueError(
-                        "Assistant email cannot be from UDLA domain")
+                        "Email is not valid")
 
             case Role.ORGANIZER | Role.STAFF:
                 if not self.email.endswith("udla.edu.ec"):
