@@ -24,7 +24,8 @@ from app.models.Token import TokenData
 from app.models.TypeCapacity import TypeCapacity
 from app.models.TypeCompanion import TypeCompanion
 from app.models.TypeId import TypeId
-from app.security.security import oauth2_scheme, verify_password
+from app.security.security import (get_password_hash, oauth2_scheme,
+                                   verify_password)
 from app.settings.config import settings
 
 # region engine
@@ -326,6 +327,10 @@ class UserCreate(UserBase):
         description="User password"
     )
 
+    def get_password_hash(self) -> bytes:
+        """Get the hashed password of the user."""
+        return get_password_hash(self.password)
+
 
 class UserUpdate(SQLModel):
     """User update model for API requests."""
@@ -459,7 +464,8 @@ class Event(EventBase, table=True):
         back_populates="organized_events"
     )
     event_dates: list["EventDate"] = Relationship(
-        back_populates="event"
+        back_populates="event",
+        cascade_delete=True,
     )
     registrations: list["Registration"] = Relationship(
         back_populates="event"
@@ -683,6 +689,7 @@ class EventDate(EventDateBase, table=True):
         default=0,
         foreign_key="event.id",
         index=True,
+        ondelete="CASCADE",
 
         title="Event ID",
         description="Foreign key to Event table"

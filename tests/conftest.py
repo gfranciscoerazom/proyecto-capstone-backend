@@ -1,5 +1,6 @@
 import pytest
 from faker import Faker
+from faker.providers import BaseProvider
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
@@ -8,7 +9,6 @@ from app.db.database import User, get_session
 from app.main import app
 from app.models.Role import Role
 from app.security.security import get_password_hash
-from faker.providers import BaseProvider
 
 
 class EcuadorProvider(BaseProvider):

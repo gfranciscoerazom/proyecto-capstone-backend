@@ -36,6 +36,7 @@ router = APIRouter(
             scopes=[Scopes.ORGANIZER],
         )
     ],
+    status_code=status.HTTP_201_CREATED,
     summary="Add a new user of type organizer",
     response_description="Successful Response with the new user",
 )

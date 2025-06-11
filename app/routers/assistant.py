@@ -3,28 +3,33 @@ from typing import Annotated
 from uuid import UUID
 
 import sqlalchemy
-from deepface import DeepFace  # type: ignore
-from fastapi import (APIRouter, BackgroundTasks, File, Form, HTTPException,
-                     Path, Query, Security, UploadFile, status)
+from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
+                     HTTPException, Path, Query, Security, UploadFile, status)
 from fastapi.responses import FileResponse
+<<<<<<< HEAD
 import sqlalchemy.exc
 from sqlmodel import select
+=======
+from sqlmodel import select, and_
+>>>>>>> 7a2af7b0087f338ff70e535cec74104fe3a46abd
 
-from app.db.database import (Assistant, AssistantCreate, Event, Registration,
+from app.db.database import (Assistant, AssistantCreate, Attendance, Event, EventDate, Registration,
                              RegistrationPublic, SessionDependency, User,
                              UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
 from app.helpers.dateAndTime import get_quito_time
 from app.helpers.files import safe_path_join
+<<<<<<< HEAD
 from app.helpers.mail import send_event_registration_email, send_new_assistant_email, send_event_rating_email, send_registration_canceled_email
 from app.helpers.validations import save_user_image
+=======
+from app.helpers.mail import send_new_assistant_email
+from app.helpers.personTempImg import PersonImg
+>>>>>>> 7a2af7b0087f338ff70e535cec74104fe3a46abd
 from app.models.Reaction import Reaction
-from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
 from app.models.TypeCompanion import TypeCompanion
-from app.security.security import get_password_hash
-from app.settings.config import settings
 
 router = APIRouter(
     prefix="/assistant",
@@ -73,80 +78,23 @@ async def add_assistant(
     """
     user: UserCreate = user_assistant.get_user()
     assistant: AssistantCreate = user_assistant.get_assistant()
-
-    async def delete_temp_image(temp_image_path: pl.Path):
-        if temp_image_path.exists():
-            temp_image_path.unlink()
-
-    temp_image_uuid: UUID = await save_user_image(assistant.image, folder="temp_imgs")
-    temp_image_path: pl.Path = pl.Path(
-        "./data/temp_imgs"
-    ) / f"{temp_image_uuid}.png"
-
-    # try:
-    images_df = DeepFace.find(  # type: ignore
-        img_path=str(temp_image_path),
-        db_path=str(pl.Path("./data/people_imgs")),
-        model_name=settings.FACE_RECOGNITION_AI_MODEL,
-        threshold=settings.FACE_RECOGNITION_AI_THRESHOLD,
-        detector_backend="yunet",
-    )
-    # except UnidentifiedImageError:
-
-    #     print("No hay una persona con esa img uwu")
-    #     images_df = []
-
-    if len(images_df[0]) > 1:
-        await delete_temp_image(temp_image_path)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="There is more than one assistant with the same image",
-        )
-
-    hashed_password: bytes = get_password_hash(user.password)
-
-    # image_uuid: UUID = await save_user_image(assistant.image)
-    # En vez de guardar la imagen en el disco mueve la imagen que está en temp_imgs a people_imgs
-    image_uuid: UUID = temp_image_uuid
-    image_path: pl.Path = pl.Path(
-        f"./data/temp_imgs/{image_uuid}.png"
-    )
-    image_path.rename(
-        pl.Path(f"./data/people_imgs/{image_uuid}.png")
-    )
-
-    extra_data_user: dict[str, bytes | Role] = {
-        "hashed_password": hashed_password,
-        "role": Role.ASSISTANT,
-    }
-
-    extra_data_assistant: dict[str, UUID] = {
-        "image_uuid": image_uuid,
-    }
-
-    db_user: User = User.model_validate(user, update=extra_data_user)
-    db_assistant: Assistant = Assistant.model_validate(
-        assistant,
-        update=extra_data_assistant
-    )
-
-    db_user.assistant = db_assistant
-
-    session.add(db_user)
     try:
-        session.commit()
-    except sqlalchemy.exc.IntegrityError as e:
-        image_path: pl.Path = pl.Path(
-            f"./data/people_imgs/{image_uuid}.png"
-        )
-        if image_path.exists():
-            image_path.unlink()
-
+        db_user = PersonImg(assistant.image).save(user, assistant, session)
+    except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         ) from e
-    session.refresh(db_user)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while saving the image"
+        ) from e
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User already exists"
+        ) from e
 
     background_tasks.add_task(
         send_new_assistant_email,
@@ -154,6 +102,34 @@ async def add_assistant(
     )
 
     return db_user
+
+
+@router.get(
+    "/info",
+    response_model=UserAssistantPublic,
+
+    summary="Get current user",
+    response_description="Successful Response with the current user",
+)
+async def read_users_me(
+    current_user: Annotated[
+        User,
+        Depends(
+            get_current_active_user,
+        )
+    ],
+) -> User:
+    """Get the information of the current authenticated user.
+
+    \f
+
+    :param current_user: The current authenticated user.
+    :type current_user: User
+
+    :return: The current authenticated user.
+    :rtype: User
+    """
+    return current_user
 
 
 @router.post(
@@ -169,6 +145,7 @@ async def add_assistant(
     response_description="Successful Response with a list of users found that are similar to the person in the image",
 )
 async def get_assistants_by_image(
+    session: SessionDependency,
     image: Annotated[
         UploadFile,
         File(
@@ -176,7 +153,20 @@ async def get_assistants_by_image(
             description="A image of a registered user to use it to find the user",
         )
     ],
-    session: SessionDependency,
+    event_id: Annotated[
+        int | None,
+        Query(
+            title="Event ID",
+            description="The ID of the event to register to",
+        )
+    ] = None,
+    event_date_id: Annotated[
+        int | None,
+        Query(
+            title="Event Date ID",
+            description="The ID of the event date to register to",
+        )
+    ] = None,
 ) -> list[User]:
     """
     Endpoint to obtain assistants by image.
@@ -196,50 +186,53 @@ async def get_assistants_by_image(
     Raises:
         HTTPException: If no assistants are found in the images database or the main database.
     """
-    async def delete_temp_image(temp_image_path: pl.Path):
-        if temp_image_path.exists():
-            temp_image_path.unlink()
+    path_to_similar_people = PersonImg(image).path_imgs_similar_people()
+    uuids_list = [UUID(img.stem) for img in path_to_similar_people]
 
-    temp_image_uuid: UUID = await save_user_image(image, folder="temp_imgs")
-    temp_image_path: pl.Path = pl.Path(
-        "./data/temp_imgs"
-    ) / f"{temp_image_uuid}.png"
-
-    images_df = DeepFace.find(  # type: ignore
-        img_path=str(temp_image_path),
-        db_path=str(pl.Path("./data/people_imgs")),
-        model_name=settings.FACE_RECOGNITION_AI_MODEL,
-        threshold=settings.FACE_RECOGNITION_AI_THRESHOLD,
-        detector_backend="yunet",
-    )
-
-    if len(images_df[0]) < 1:
-        await delete_temp_image(temp_image_path)
+    if len(path_to_similar_people) < 1:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Assistant not found in images database",
+            detail="No similar people found in images database",
         )
 
-    assistants: list[Assistant] = [
+    if bool(event_id) ^ bool(event_date_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Both event_id and event_date_id must be provided or none of them",
+        )
+
+    if event_id and event_date_id:
+        similar_users: list[User] = list(
+            session.exec(
+                select(User).
+                join(Registration, Registration.companion_id == User.id).  # type: ignore
+                join(Event, Registration.event_id == Event.id).  # type: ignore
+                join(EventDate, Event.id == EventDate.event_id).  # type: ignore
+                join(Assistant, Assistant.user_id == User.id).  # type: ignore
+                join(Attendance, and_(
+                    Attendance.event_date_id == EventDate.id,
+                    Attendance.registration_id == Registration.id
+                ), isouter=True).
+                where(
+                    Assistant.image_uuid.in_(uuids_list),  # type: ignore
+                    Event.id == event_id,
+                    EventDate.id == event_date_id,
+                    Attendance.arrival_time == None
+                )
+            ).all()
+        )
+        return similar_users
+
+    similar_users = list(
         session.exec(
-            select(Assistant).
+            select(User).
+            join(Assistant).
             where(
-                Assistant.image_uuid == UUID(pl.Path(img).stem)  # type: ignore
+                Assistant.image_uuid.in_(uuids_list),  # type: ignore
             )
-        ).first()
-        for img in images_df[0]['identity']  # type: ignore
-    ]
-
-    if not all(assistants):
-        await delete_temp_image(temp_image_path)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Assistant not found in database",
-        )
-
-    await delete_temp_image(temp_image_path)
-
-    return list(map(lambda assistant: assistant.user, assistants))
+        ).all()
+    )
+    return similar_users
 
 
 @router.get(
