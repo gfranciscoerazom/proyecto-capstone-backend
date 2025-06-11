@@ -3,15 +3,11 @@ from typing import Annotated
 from uuid import UUID
 
 import sqlalchemy
+import sqlalchemy.exc
 from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
                      HTTPException, Path, Query, Security, UploadFile, status)
 from fastapi.responses import FileResponse
-<<<<<<< HEAD
-import sqlalchemy.exc
-from sqlmodel import select
-=======
 from sqlmodel import select, and_
->>>>>>> 7a2af7b0087f338ff70e535cec74104fe3a46abd
 
 from app.db.database import (Assistant, AssistantCreate, Attendance, Event, EventDate, Registration,
                              RegistrationPublic, SessionDependency, User,
@@ -19,13 +15,8 @@ from app.db.database import (Assistant, AssistantCreate, Attendance, Event, Even
                              UserCreate, get_current_active_user)
 from app.helpers.dateAndTime import get_quito_time
 from app.helpers.files import safe_path_join
-<<<<<<< HEAD
-from app.helpers.mail import send_event_registration_email, send_new_assistant_email, send_event_rating_email, send_registration_canceled_email
-from app.helpers.validations import save_user_image
-=======
-from app.helpers.mail import send_new_assistant_email
+from app.helpers.mail import send_event_rating_email, send_event_registration_email, send_new_assistant_email, send_registration_canceled_email
 from app.helpers.personTempImg import PersonImg
->>>>>>> 7a2af7b0087f338ff70e535cec74104fe3a46abd
 from app.models.Reaction import Reaction
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
@@ -85,15 +76,15 @@ async def add_assistant(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         ) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while saving the image"
-        ) from e
     except sqlalchemy.exc.IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User already exists"
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while saving the image"
         ) from e
 
     background_tasks.add_task(
