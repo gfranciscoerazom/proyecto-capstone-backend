@@ -24,7 +24,7 @@
       </h2>
 
       <p style="font-size: 16px; color: #374151; margin-bottom: 16px;">
-        Gracias por registrarte al evento de la Universidad de Las Américas. ¡Nos alegra saber que formarás parte de esta experiencia!
+      Gracias por registrarte al evento <strong>{{ event_name }}</strong> de la Universidad de Las Américas. ¡Nos alegra saber que formarás parte de esta experiencia!
       </p>
 
       <p style="font-size: 16px; color: #374151; margin-bottom: 16px;">
@@ -39,10 +39,9 @@
         <h3 style="font-size: 18px; font-weight: bold; color: #1f2937; margin-bottom: 8px;">
           📋 Detalles del evento:
         </h3>
-        <p style="font-size: 16px; color: #374151; margin: 0;"><strong>📅 Fecha:</strong> 15 de abril de 2025</p>
-        <p style="font-size: 16px; color: #374151; margin: 0;"><strong>⏰ Hora:</strong> 10:00 AM - 2:00 PM</p>
-        <p style="font-size: 16px; color: #374151; margin: 0;"><strong>📍 Lugar:</strong> Auditorio Principal – Campus UDLA Park</p>
-        <p style="font-size: 16px; color: #374151; margin: 0;"><strong>🎒 Qué llevar:</strong> Ganas de aprender, hacer preguntas y vivir la experiencia UDLA 💡</p>
+        <p style="font-size: 16px; color: #374151; margin: 0;"><strong>📅 Fecha:</strong> {{ day_date }}</p>
+        <p style="font-size: 16px; color: #374151; margin: 0;"><strong>⏰ Hora:</strong> {{ start_time }} – {{ end_time }}</p>
+        <p style="font-size: 16px; color: #374151; margin: 0;"><strong>📍 Lugar:</strong> {{ event_location }}</p>
       </div>
 
       <div style="text-align: center; margin-bottom: 32px;">

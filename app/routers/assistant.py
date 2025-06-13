@@ -3,6 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 import sqlalchemy
+import sqlalchemy.exc
 from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
                      HTTPException, Path, Query, Security, UploadFile, status)
 from fastapi.responses import FileResponse
@@ -14,7 +15,7 @@ from app.db.database import (Assistant, AssistantCreate, Attendance, Event, Even
                              UserCreate, get_current_active_user)
 from app.helpers.dateAndTime import get_quito_time
 from app.helpers.files import safe_path_join
-from app.helpers.mail import send_new_assistant_email
+from app.helpers.mail import send_event_rating_email, send_event_registration_email, send_new_assistant_email, send_registration_canceled_email
 from app.helpers.personTempImg import PersonImg
 from app.models.Reaction import Reaction
 from app.models.Scopes import Scopes
@@ -75,15 +76,15 @@ async def add_assistant(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         ) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while saving the image"
-        ) from e
     except sqlalchemy.exc.IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User already exists"
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while saving the image"
         ) from e
 
     background_tasks.add_task(
@@ -338,7 +339,6 @@ def get_user_image(
 @router.post(
     "/register-to-event/{event_id}",
     response_model=RegistrationPublic,
-
     summary="Register to an event",
     response_description="Successful Response with the registration",
 )
@@ -358,6 +358,7 @@ def register_to_event(
             scopes=[Scopes.ASSISTANT]
         )
     ],
+    background_tasks: BackgroundTasks,
 ) -> Registration:
     """
     Endpoint to register to an event.
@@ -412,6 +413,13 @@ def register_to_event(
         ) from e
     session.refresh(registration)
 
+    background_tasks.add_task(
+        send_event_registration_email,
+        current_user,
+        event,
+        event.event_dates
+    )
+
     return registration
 
 
@@ -464,7 +472,7 @@ def register_companion_to_event(
     Args:
         event_id (int): The ID of the event to register a companion to.
         companion_id (int): The ID of the companion to register to the event.
-        session (SessionDependency): The database session dependency.
+        session: SessionDependency: The database session dependency.
         current_user (User): The current active user, obtained from the dependency injection.
 
     Returns:
@@ -529,7 +537,6 @@ def register_companion_to_event(
 @router.get(
     "/react/{user_id}/{event_id}",
     response_model=RegistrationPublic,
-
     summary="React to an event",
     response_description="Successful Response",
 )
@@ -555,7 +562,8 @@ def react_to_event(
             description="The reaction to the event",
         )
     ],
-    session: SessionDependency
+    session: SessionDependency,
+    background_tasks: BackgroundTasks,  # <-- Add this parameter
 ) -> Registration:
     """
     Endpoint to react to an event.
@@ -612,6 +620,12 @@ def react_to_event(
         ) from e
     session.refresh(registration)
 
+    # Send rating email after reacting
+    background_tasks.add_task(
+        send_event_rating_email,
+        user
+    )
+
     return registration
 
 
@@ -630,6 +644,7 @@ def get_registered_events(
             scopes=[Scopes.ASSISTANT]
         )
     ],
+    background_tasks: BackgroundTasks,
     session: SessionDependency
 ):
     """
@@ -642,12 +657,21 @@ def get_registered_events(
     :param session: The database session
     :type session: SessionDependency
     """
+    print(f"Current user ID: {current_user.id}")
     registrations = session.exec(
         select(Registration).
         where(Registration.assistant_id == current_user.id,
               Registration.companion_id == current_user.id)
     ).all()
 
+    # try:
+    #     background_tasks.add_task(
+    #         send_event_registration_email,
+    #         current_user
+    #     ) # type: ignore
+    # except Exception as e:
+    #     print(f"Error sending email: {e}")
+    
     return registrations
 
 # response = requests.post(
@@ -679,6 +703,7 @@ def unregister_from_event(
             scopes=[Scopes.ASSISTANT]
         )
     ],
+    background_tasks: BackgroundTasks,
 ):
     """Endpoint to unregister from an event.
     This endpoint allows users to unregister from an event by providing the event's ID.
@@ -712,5 +737,13 @@ def unregister_from_event(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e)
         ) from e
+
+    event = session.get(Event, event_id)
+    
+    background_tasks.add_task(
+        send_registration_canceled_email,
+        current_user,
+        event
+    )
 
     return registration
