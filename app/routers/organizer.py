@@ -9,6 +9,7 @@ from typing import Annotated, Any
 import logfire
 import sqlalchemy
 from fastapi import APIRouter, Form, HTTPException, Query, Security, status
+from sqlmodel import select
 
 from app.db.database import (SessionDependency, User, UserCreate, UserPublic,
                              get_current_active_user)
@@ -125,6 +126,26 @@ async def change_face_recognition_ai_model(
         "model": settings.FACE_RECOGNITION_AI_MODEL,
         "threshold": settings.FACE_RECOGNITION_AI_THRESHOLD,
     }
+
+
+@router.get(
+    "/all",
+    response_model=list[UserPublic],
+    summary="Obtener todos los organizadores",
+    response_description="Lista de usuarios con rol ORGANIZER"
+)
+async def list_organizers(
+    session: SessionDependency
+):
+    """
+    Recupera todos los usuarios cuyo rol sea ORGANIZER.
+    Requiere autenticación con el scope ORGANIZER.
+    """
+    organizers = session.exec(
+        select(User).where(User.role == Role.ORGANIZER)
+    ).all()
+
+    return organizers
 
 
 # endregion

@@ -195,5 +195,23 @@ async def get_my_events(
         )
     return events
 
+@router.get(
+    "/all",
+    response_model=list[UserPublic],
+    summary="Obtener todos los de staff",
+    response_description="Lista de usuarios con rol STAFF"
+)
+async def list_staffss(
+    session: SessionDependency
+):
+    """
+    Recupera todos los usuarios cuyo rol sea STAFF.
+    Requiere autenticación con el scope STAFF.
+    """
+    staffs = session.exec(
+        select(User).where(User.role == Role.STAFF)
+    ).all()
+
+    return staffs
 
 # endregion
