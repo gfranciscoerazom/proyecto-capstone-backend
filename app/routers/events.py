@@ -347,6 +347,7 @@ async def add_event_dates(
 @router.post(
     "/{event_id}/date/add",
     response_model=EventPublicWithEventDate,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[
         Security(
             get_current_active_user,
@@ -676,5 +677,42 @@ async def delete_event(
     session.commit()
 
     return event
+
+
+@router.get(
+    "/{event_id}/dates",
+    response_model=list[EventDate],
+)
+async def get_event_dates(
+    event_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event ID",
+            description="The ID of the event to get dates for.",
+        )
+    ],
+    session: SessionDependency,
+) -> list[EventDate]:
+    """
+    Endpoint to get all dates for a specific event.
+
+    This endpoint allows users to retrieve all dates associated with a specific event by its ID.
+
+    \f
+
+    :param event_id: The ID of the event to get dates for.
+    :type event_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: A list of event dates.
+    :rtype: list[EventDate]
+    """
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    return event.event_dates
 
 # endregion
