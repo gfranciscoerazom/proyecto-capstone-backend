@@ -43,7 +43,7 @@ jobs:
           command: pip install bandit
       - run:
           name: Run bandit
-          command: bandit -r . --ignore .venv,.git,__pycache__ || true
+          command: bandit -r ./app || true
 
 
   trivy:
@@ -53,7 +53,7 @@ jobs:
       - checkout
       - run:
           name: Run Trivy
-          command: trivy fs --ignore .venv,.git,__pycache__ || true
+          command: trivy fs ./app || true
 
 workflows:
   build-and-test:
