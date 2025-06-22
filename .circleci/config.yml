@@ -33,8 +33,32 @@ jobs:
           name: Run flake8
           command: flake8 --ignore=E501 --exclude=.venv,.git,__pycache__ . || true
 
+  bandit:
+    docker:
+      - image: cimg/python:3.11-node
+    steps:
+      - checkout
+      - run:
+          name: Install bandit
+          command: pip install bandit
+      - run:
+          name: Run bandit
+          command: bandit -r . --ignore .venv,.git,__pycache__ || true
+
+
+  trivy:
+    docker:
+      - image: aquasec/trivy
+    steps:
+      - checkout
+      - run:
+          name: Run Trivy
+          command: trivy fs --ignore .venv,.git,__pycache__ || true
+
 workflows:
   build-and-test:
     jobs:
       - test-python
       - flake8
+      - bandit
+      - trivy
