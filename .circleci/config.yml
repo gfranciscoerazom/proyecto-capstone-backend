@@ -59,14 +59,12 @@ workflows:
   version: 2
   build-validate-and-deploy:
     jobs:
-      # Primero corremos todo lo que valida calidad y seguridad
       - test-python
       - flake8
       - bandit
       - trivy
       - sonar
 
-      # Una vez completadas, pedimos aprobación manual
       - hold:
           type: approval
           requires:
@@ -76,7 +74,6 @@ workflows:
             - trivy
             - sonar
 
-      # Tras la aprobación, seguimos con deploy
       - deploy:
           requires:
             - hold
