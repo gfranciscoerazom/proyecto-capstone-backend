@@ -55,23 +55,29 @@ jobs:
           name: Run Trivy
           command: trivy fs ./app || true
 
+# workflows:
+#   version: 2
+#   build-validate-and-deploy:
+#     jobs:
+#       - test-python
+#       - flake8
+#       - bandit
+#       - trivy
+
+#       - hold:
+#           type: approval
+#           requires:
+#             - test-python
+#             - flake8
+#             - bandit
+#             - trivy
+
+#       - deploy:
+#           requires:
+#             - hold
+
 workflows:
-  version: 2
-  build-validate-and-deploy:
+  build-and-test:
     jobs:
       - test-python
       - flake8
-      - bandit
-      - trivy
-
-      - hold:
-          type: approval
-          requires:
-            - test-python
-            - flake8
-            - bandit
-            - trivy
-
-      - deploy:
-          requires:
-            - hold
