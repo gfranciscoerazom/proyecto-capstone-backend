@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: capstone-backend
-        image: capstone-backend:latest  # Replace with your actual image registry/name
+        image: gfranciscoerazom/capstone-backend  # Replace with your actual image registry/name
         ports:
         - containerPort: 8000
           name: http
