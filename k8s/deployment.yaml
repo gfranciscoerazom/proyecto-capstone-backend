@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    circleci.com/project-id: "your-project-id-here"  # Replace with your actual CircleCI project ID
+    description: "FastAPI backend deployment for Capstone project"
+  labels:
+    app: capstone-backend
+    circleci.com/component-name: capstone-backend
+    circleci.com/version: "1.0.0"
+    tier: backend
+  name: capstone-backend-deployment
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: capstone-backend
+      circleci.com/component-name: capstone-backend
+  template:
+    metadata:
+      labels:
+        app: capstone-backend
+        circleci.com/component-name: capstone-backend
+        circleci.com/version: "1.0.0"
+        tier: backend
+    spec:
+      containers:
+      - name: capstone-backend
+        image: capstone-backend:latest  # Replace with your actual image registry/name
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: ENV
+          value: "production"
+        - name: PORT
+          value: "8000"
+        # Add other environment variables as needed
+        # - name: DATABASE_URL
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: backend-secrets
+        #       key: database-url
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: app-data
+          mountPath: /app/data
+        - name: temp-storage
+          mountPath: /app/data/temp_imgs
+      volumes:
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: capstone-backend-pvc
+      - name: temp-storage
+        emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: capstone-backend-service
+  labels:
+    app: capstone-backend
+    circleci.com/component-name: capstone-backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: capstone-backend
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: capstone-backend-pvc
+  labels:
+    app: capstone-backend
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

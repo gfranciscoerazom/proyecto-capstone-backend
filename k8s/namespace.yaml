@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: capstone
+  labels:
+    name: capstone
+    circleci.com/component-name: capstone-namespace

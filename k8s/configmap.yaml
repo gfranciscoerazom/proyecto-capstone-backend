@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: capstone-backend-config
+  labels:
+    app: capstone-backend
+    circleci.com/component-name: capstone-backend
+data:
+  # Application configuration
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  # Add other non-sensitive configuration here
+  CORS_ORIGINS: "*"
+  API_VERSION: "v1"
