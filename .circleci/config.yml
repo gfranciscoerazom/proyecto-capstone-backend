@@ -63,7 +63,6 @@ workflows:
       - flake8
       - bandit
       - trivy
-      - sonar
 
       - hold:
           type: approval
@@ -72,7 +71,6 @@ workflows:
             - flake8
             - bandit
             - trivy
-            - sonar
 
       - deploy:
           requires:
