@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    circleci.com/project-id: "your-project-id-here"  # Replace with your actual CircleCI project ID
+    circleci.com/project-id: "774cf89e-d618-4a18-8fe7-e77b3698a6da"  # Replace with your actual CircleCI project ID
     description: "FastAPI backend deployment for Capstone project"
   labels:
     app: capstone-backend
