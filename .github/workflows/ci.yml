@@ -40,7 +40,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           # si tienes un archivo separado para dev/test:
-          pip install -r requirements-dev.txt
+          pip install -r requirements.txt
 
       # 2.5 Ejecutar pytest
       - name: Ejecutar tests con pytest
