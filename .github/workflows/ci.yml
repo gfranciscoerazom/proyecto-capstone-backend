@@ -1,6 +1,5 @@
 name: CI
 
-# 1. Disparadores: en push a main/develop y en pull requests
 on:
   push:
     branches:
