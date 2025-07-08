@@ -110,4 +110,4 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build Docker image
-        run: docker build -t myapp:${{ github.sha }} .
+        run: docker build -f Containerfile -t myapp:${{ github.sha }} .
