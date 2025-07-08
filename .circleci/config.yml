@@ -60,8 +60,7 @@ jobs:
       - image: cimg/python:3.11-node
     steps:
       - checkout
-      # - setup_remote_docker:
-      #     version: 20.10.14
+      - setup_remote_docker
       - run:
           name: Build Docker image
           command: |
