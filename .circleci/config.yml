@@ -1,7 +1,6 @@
 version: 2.1
 orbs:
   python: circleci/python@2
-  docker: circleci/docker@3.1.0 
 jobs:
 
   test-python:
@@ -68,9 +67,15 @@ jobs:
             docker build -t capstone-backend:${CIRCLE_SHA1} -f Containerfile .
             docker tag capstone-backend:${CIRCLE_SHA1} capstone-backend:latest
       - run:
+          name: Docker login
+          command: |
+            echo "$DOCKER_PASSWORD" \
+              | docker login docker.io \
+                  --username "$DOCKER_USERNAME" \
+                  --password-stdin
+      - run:
           name: Push to registry
           command: |
-            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
             docker push capstone-backend:${CIRCLE_SHA1}
             docker push capstone-backend:latest
 
