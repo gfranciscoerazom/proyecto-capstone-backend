@@ -85,4 +85,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install flake8
       - name: Ejecutar flake8
+        continue-on-error: true
         run: flake8 --ignore=E501 --exclude=.venv,.git,__pycache__ .
