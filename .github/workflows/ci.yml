@@ -68,11 +68,11 @@ jobs:
         continue-on-error: true
         run: flake8 --ignore=E501 --exclude=.venv,.git,__pycache__ .
 
-    # 3. Seguridad: Bandit
+  # 3. Seguridad: Bandit
   bandit:
-    name: Security scan: Bandit
+    name: "Security scan: Bandit"
     runs-on: ubuntu-latest
-    needs: [lint]
+    needs: lint
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.11
@@ -87,9 +87,9 @@ jobs:
 
   # 4. Seguridad: Trivy
   trivy:
-    name: Security scan: Trivy FS
+    name: "Security scan: Trivy FS"
     runs-on: ubuntu-latest
-    needs: [lint]
+    needs: lint
     steps:
       - uses: actions/checkout@v4
       - name: Instalar Trivy
