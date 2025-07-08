@@ -16,7 +16,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.11]
+        python-version: [3.11] 
+
+    env:
+      ENVIRONMENT:             ${{ secrets.ENVIRONMENT }}
+      SECRET_KEY:              ${{ secrets.SECRET_KEY }}
+      ALGORITHM:               ${{ secrets.ALGORITHM }}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+      DATABASE_URL:            ${{ secrets.DATABASE_URL }}
+      EMAIL_SENDER:            ${{ secrets.EMAIL_SENDER }}
+      EMAIL_APP_PASSWORD:      ${{ secrets.EMAIL_APP_PASSWORD }}
+      LOGS_TOKEN:              ${{ secrets.LOGS_TOKEN }}
+      FACE_RECOGNITION_AI_MODEL: ${{ secrets.FACE_RECOGNITION_AI_MODEL }}
+    
     steps:
       # 2.1 Checkout del código
       - uses: actions/checkout@v4
