@@ -16,4 +16,3 @@ pytest-xdist
 pytest-xdist[psutil]
 pytest-cov
 apscheduler
-tensorflow-cpu==2.11.0
