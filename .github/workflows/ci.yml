@@ -46,7 +46,7 @@ jobs:
       - name: Ejecutar tests con coverage
         run: |
           pip install coverage
-          coverage run -m pytest --junitxml=test-results/junit.xml --verbose
+          coverage run --omit="*/config-*.py" -m pytest --junitxml=test-results/junit.xml --verbose
           coverage xml -o coverage.xml
 
       - name: Guardar resultados de test
