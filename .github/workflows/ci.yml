@@ -172,11 +172,11 @@ jobs:
           exit-code: 0
           severity: HIGH,CRITICAL
 
-      - name: Upload Trivy results
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-image-results
-          path: trivy-image-scan.txt
+      # - name: Upload Trivy results
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: trivy-image-results-${{ github.run_id }}
+      #     path: trivy-image-scan.txt
 
   sonarcloud:
     name: SonarCloud Analysis
