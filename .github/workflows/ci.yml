@@ -209,3 +209,41 @@ jobs:
                "https://api.render.com/deploy/${{ secrets.RENDER_SERVICE_ID }}" \
                -H "Accept: application/json" \
                -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+
+      - name: Deploy monitoring stack
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        run: |
+          kubectl apply -f k8s/monitoring/prometheus-configmap.yaml
+          kubectl apply -f k8s/monitoring/prometheus-deployment.yaml
+          kubectl apply -f k8s/monitoring/grafana-provisioning.yaml
+          kubectl apply -f k8s/monitoring/grafana-deployment.yaml
+          # opcionalmente:
+          # kubectl apply -f k8s/monitoring/dashboard-sample.json
+
+  deploy-monitoring:
+    name: Deploy monitoring stack to Kubernetes
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Instalar kubectl
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      # 2. Configurar credenciales (ejemplo con KUBECONFIG inyectado como secreto)
+      - name: Configure kubeconfig
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      # 3. Aplicar tus manifests
+      - name: Apply monitoring manifests
+        run: |
+          kubectl apply -f k8s/monitoring/prometheus-configmap.yaml
+          kubectl apply -f k8s/monitoring/prometheus-deployment.yaml
+          kubectl apply -f k8s/monitoring/grafana-provisioning.yaml
+          kubectl apply -f k8s/monitoring/grafana-deployment.yaml
