@@ -4,12 +4,12 @@ including authentication, registration, and user information retrieval.
 """
 from typing import Annotated
 
-import sqlalchemy
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from fastapi import APIRouter, Form, HTTPException, Security, status
 
 from app.db.database import (Event, EventPublicWithEventDate,
-                             SessionDependency, StaffEventLink, User, UserCreate, UserPublic,
+                             SessionDependency, StaffEventLink, User, UserCreate, UserPublic, UserUpdate,
                              get_current_active_user)
 from app.models.Role import Role
 from app.models.Scopes import Scopes
@@ -69,7 +69,7 @@ async def add_user(
     session.add(db_user)
     try:
         session.commit()
-    except sqlalchemy.exc.IntegrityError as e:
+    except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User with this email already exists",
@@ -142,7 +142,7 @@ async def add_staff_to_event(
     event.staff.append(staff)
     try:
         session.add(event)
-    except sqlalchemy.exc.IntegrityError as e:
+    except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Staff already added to the event",
@@ -213,5 +213,132 @@ async def list_staffss(
     ).all()
 
     return staffs
+
+
+@router.patch(
+    "/{staff_id}",
+    response_model=UserPublic,
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ORGANIZER],
+        )
+    ],
+    summary="Actualizar parcialmente un miembro del staff",
+    response_description="Usuario actualizado exitosamente"
+)
+async def update_staff(
+    staff_id: int,
+    user_update: UserUpdate,
+    session: SessionDependency
+) -> User:
+    """
+    Actualiza parcialmente un usuario con rol STAFF.
+    
+    Este endpoint permite a un organizador actualizar parcialmente
+    la información de un miembro del staff.
+    
+    Args:
+        staff_id (int): El ID del miembro del staff a actualizar.
+        user_update (UserUpdate): Los datos a actualizar del usuario.
+        session (SessionDependency): Sesión de la base de datos.
+    
+    Returns:
+        UserPublic: El usuario actualizado.
+    
+    Raises:
+        HTTPException: Si el usuario no existe o no es un miembro del staff.
+    """
+    # Verificar que el usuario existe
+    staff = session.get(User, staff_id)
+    if not staff:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Staff member not found"
+        )
+    
+    # Verificar que el usuario es staff
+    if staff.role != Role.STAFF:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not a staff member"
+        )
+    
+    # Actualizar solo los campos que no son None
+    user_data = user_update.model_dump(exclude_unset=True)
+    
+    # Si se está actualizando la contraseña, hashearla
+    if "password" in user_data:
+        user_data["hashed_password"] = get_password_hash(user_data.pop("password"))
+    
+    # Actualizar los campos del usuario
+    for field, value in user_data.items():
+        setattr(staff, field, value)
+    
+    try:
+        session.add(staff)
+        session.commit()
+        session.refresh(staff)
+    except IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already exists or data conflict"
+        ) from e
+    
+    return staff
+
+
+@router.delete(
+    "/{staff_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[
+        Security(
+            get_current_active_user,
+            scopes=[Scopes.ORGANIZER],
+        )
+    ],
+    summary="Eliminar un miembro del staff",
+    response_description="Usuario eliminado exitosamente"
+)
+async def delete_staff(
+    staff_id: int,
+    session: SessionDependency
+):
+    """
+    Elimina un usuario con rol STAFF del sistema.
+    
+    Este endpoint permite a un organizador eliminar completamente
+    un miembro del staff del sistema.
+    
+    Args:
+        staff_id (int): El ID del miembro del staff a eliminar.
+        session (SessionDependency): Sesión de la base de datos.
+    
+    Raises:
+        HTTPException: Si el usuario no existe o no es un miembro del staff.
+    """
+    # Verificar que el usuario existe
+    staff = session.get(User, staff_id)
+    if not staff:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Staff member not found"
+        )
+    
+    # Verificar que el usuario es staff
+    if staff.role != Role.STAFF:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not a staff member"
+        )
+    
+    try:
+        session.delete(staff)
+        session.commit()
+    except IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete staff member due to existing relationships"
+        ) from e
 
 # endregion
