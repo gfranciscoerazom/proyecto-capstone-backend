@@ -87,12 +87,6 @@ async def add_user(
 
 @router.patch(
     "/change-settings",
-    dependencies=[
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.ORGANIZER],
-        )
-    ],
     summary="Change the face recognition AI model",
 )
 async def change_face_recognition_ai_model(
@@ -122,6 +116,23 @@ async def change_face_recognition_ai_model(
 
     update_settings()
 
+    return {
+        "model": settings.FACE_RECOGNITION_AI_MODEL,
+        "threshold": settings.FACE_RECOGNITION_AI_THRESHOLD,
+    }
+
+
+@router.get(
+    "/get-settings",
+    summary="Get the current face recognition AI model settings",
+)
+async def get_face_recognition_ai_model() -> dict[str, Any]:
+    """
+    Retrieve the current settings for the face recognition AI model.
+
+    Returns:
+        dict[str, Any]: A dictionary containing the current model and threshold.
+    """
     return {
         "model": settings.FACE_RECOGNITION_AI_MODEL,
         "threshold": settings.FACE_RECOGNITION_AI_THRESHOLD,
