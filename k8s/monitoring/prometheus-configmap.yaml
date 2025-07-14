@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: 'proyecto-capstone-backend'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['proyecto-capstone-backend-service.default.svc.cluster.local:8000']
