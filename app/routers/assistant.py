@@ -763,10 +763,7 @@ async def update_assistant(
     session: SessionDependency,
     current_user: Annotated[
         User,
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.ORGANIZER, Scopes.ASSISTANT]
-        )
+        Depends(get_current_active_user)
     ]
 ) -> User:
     """
@@ -788,9 +785,17 @@ async def update_assistant(
     Raises:
         HTTPException: Si el usuario no existe, no es un asistente, o no tiene permisos.
     """
+    from app.models.Role import Role
     
-    # Si soy assistant, solo me toco a mí mismo:
-    if current_user.role == "assistant" and current_user.id != assistant_id:
+    # Verificar que el usuario tiene permisos (organizador o asistente)
+    if current_user.role not in [Role.ORGANIZER, Role.ASSISTANT]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Si es asistente, solo puede actualizar su propio perfil
+    if current_user.role == Role.ASSISTANT and current_user.id != assistant_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only update your own profile"
@@ -864,7 +869,7 @@ async def delete_assistant(
     session: SessionDependency,
     current_user: Annotated[
         User,
-        Security(get_current_active_user, scopes=[])
+        Depends(get_current_active_user)
     ]
 ):
     """
