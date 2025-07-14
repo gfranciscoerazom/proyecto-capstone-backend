@@ -672,7 +672,7 @@ def get_registered_events(
     #     ) # type: ignore
     # except Exception as e:
     #     print(f"Error sending email: {e}")
-    
+
     return registrations
 
 # response = requests.post(
@@ -740,6 +740,7 @@ def unregister_from_event(
         ) from e
 
     event = session.get(Event, event_id)
+
     if event:
         background_tasks.add_task(
             send_registration_canceled_email,

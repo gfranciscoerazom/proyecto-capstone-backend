@@ -536,21 +536,15 @@ class EventUpdate(SQLModel):
     name: str | None = Field(
         default=None, title="Name", description="Event name")
     description: str | None = Field(
-        default=None, title="Description", description="Event description")
+        default=None, title="Description", description="Event description", sa_type=Text)
     location: str | None = Field(
         default=None, title="Location", description="Event location")
     maps_link: GoogleMapsURL | None = Field(
         default=None, title="Maps Link", description="Event maps link (https://maps.app.goo.gl/)")
-    max_capacity: int | None = Field(
-        default=None, title="Max Capacity", description="Event maximum capacity")
-    venue_capacity: int | None = Field(
-        default=None, title="Venue Capacity", description="Event venue capacity")
-    image: str | None = Field(
-        default=None, title="Event Image", description="Path to event image")
-    is_cancelled: bool | None = Field(
-        default=None, title="Is Cancelled", description="Event cancellation status")
-    organizer_id: int | None = Field(
-        default=None, title="Organizer ID", description="Organizer User ID")
+    capacity: PositiveInt | None = Field(
+        default=None, ge=1, title="Max Capacity", description="Event maximum capacity")
+    capacity_type: TypeCapacity | None = Field(
+        default=None, title="Capacity Type", description="Type of capacity for the event")
 
 
 # region Attendance

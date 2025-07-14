@@ -79,15 +79,8 @@ async def add_user(
 
 
 @router.post(
-    "add-staff-to-event",
+    "/add-staff-to-event",
     response_model=EventPublicWithEventDate,
-    dependencies=[
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.ORGANIZER],
-        )
-    ],
-
     summary="Add a new user of type staff to an event",
     response_description="Successful Response with the new user",
 )
@@ -194,6 +187,7 @@ async def get_my_events(
             detail="No events found for the current staff member",
         )
     return events
+
 
 @router.get(
     "/all",
