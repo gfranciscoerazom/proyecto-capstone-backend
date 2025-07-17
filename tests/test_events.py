@@ -80,7 +80,7 @@ def test_add_event_basic(session: Session, client: TestClient, token: str):
     json_response = response.json()
     print(json_response)
 
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_201_CREATED
     assert json_response["name"] == "NASA"
     assert json_response["location"] == "UDLA Park"
     assert json_response["capacity_type"] == "site_capacity"
@@ -620,7 +620,7 @@ def test_add_single_event_date_success(session: Session, client: TestClient, tok
 
     json_response = response.json()
 
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_201_CREATED
     assert isinstance(json_response["event_dates"], list)
     assert any(date["day_date"] ==
                "2025-04-28" for date in json_response["event_dates"])

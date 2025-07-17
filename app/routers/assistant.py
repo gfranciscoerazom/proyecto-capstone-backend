@@ -9,8 +9,8 @@ from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
 from fastapi.responses import FileResponse
 from sqlmodel import select, and_
 
-from app.db.database import (Assistant, AssistantCreate, Attendance, Event, EventDate, Registration,
-                             RegistrationPublic, SessionDependency, User,
+from app.db.database import (Assistant, AssistantCreate, AssistantUpdate, Attendance, Event, EventDate, Registration,
+                             RegistrationPublic, SessionDependency, User, UserUpdate,
                              UserAssistantCreate, UserAssistantPublic,
                              UserCreate, get_current_active_user)
 from app.helpers.dateAndTime import get_quito_time
@@ -21,6 +21,7 @@ from app.models.Reaction import Reaction
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
 from app.models.TypeCompanion import TypeCompanion
+from app.security.security import get_password_hash
 
 router = APIRouter(
     prefix="/assistant",
@@ -740,10 +741,192 @@ def unregister_from_event(
 
     event = session.get(Event, event_id)
 
-    background_tasks.add_task(
-        send_registration_canceled_email,
-        current_user,
-        event
-    )
+    if event:
+        background_tasks.add_task(
+            send_registration_canceled_email,
+            current_user,
+            event
+        )
 
     return registration
+
+
+@router.patch(
+    "/{assistant_id}",
+    response_model=UserAssistantPublic,
+    summary="Actualizar parcialmente un asistente",
+    response_description="Asistente actualizado exitosamente",
+)
+async def update_assistant(
+    assistant_id: int,
+    user_update: UserUpdate,
+    assistant_update: AssistantUpdate,
+    session: SessionDependency,
+    current_user: Annotated[
+        User,
+        Depends(get_current_active_user)
+    ]
+) -> User:
+    """
+    Actualiza parcialmente un asistente.
+    
+    Este endpoint permite a un organizador actualizar cualquier asistente,
+    o a un asistente actualizar su propio perfil.
+    
+    Args:
+        assistant_id (int): El ID del asistente a actualizar.
+        user_update (UserUpdate): Los datos de usuario a actualizar.
+        assistant_update (AssistantUpdate): Los datos de asistente a actualizar.
+        session (SessionDependency): Sesión de la base de datos.
+        current_user (User): Usuario actual autenticado.
+    
+    Returns:
+        UserAssistantPublic: El asistente actualizado.
+    
+    Raises:
+        HTTPException: Si el usuario no existe, no es un asistente, o no tiene permisos.
+    """
+    from app.models.Role import Role
+    
+    # Verificar que el usuario tiene permisos (organizador o asistente)
+    if current_user.role not in [Role.ORGANIZER, Role.ASSISTANT]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Si es asistente, solo puede actualizar su propio perfil
+    if current_user.role == Role.ASSISTANT and current_user.id != assistant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own profile"
+        )
+    
+    # Verificar que el usuario existe
+    user = session.get(User, assistant_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assistant not found"
+        )
+    
+    # Verificar que el asistente existe
+    assistant = session.get(Assistant, assistant_id)
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assistant profile not found"
+        )
+    
+    # Actualizar datos del usuario
+    user_data = user_update.model_dump(exclude_unset=True)
+    
+    # Si se está actualizando la contraseña, hashearla
+    if "password" in user_data:
+        user_data["hashed_password"] = get_password_hash(user_data.pop("password"))
+    
+    # Actualizar los campos del usuario
+    for field, value in user_data.items():
+        setattr(user, field, value)
+    
+    # Actualizar datos del asistente
+    assistant_data = assistant_update.model_dump(exclude_unset=True, exclude={"image"})
+    
+    # Manejar actualización de imagen si se proporciona
+    if assistant_update.image:
+        # Nota: La actualización de imágenes requiere lógica compleja adicional
+        # que está fuera del alcance de este endpoint básico
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Image update not implemented in this endpoint"
+        )
+    
+    # Actualizar los campos del asistente
+    for field, value in assistant_data.items():
+        setattr(assistant, field, value)
+    
+    try:
+        session.add(user)
+        session.add(assistant)
+        session.commit()
+        session.refresh(user)
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email or ID number already exists or data conflict"
+        ) from e
+    
+    return user
+
+
+@router.delete(
+    "/{assistant_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar un asistente",
+    response_description="Asistente eliminado exitosamente"
+)
+async def delete_assistant(
+    assistant_id: int,
+    session: SessionDependency,
+    current_user: Annotated[
+        User,
+        Depends(get_current_active_user)
+    ]
+):
+    """
+    Elimina un asistente del sistema.
+    
+    Este endpoint permite a un organizador eliminar cualquier asistente,
+    o a un asistente eliminar su propio perfil.
+    
+    Args:
+        assistant_id (int): El ID del asistente a eliminar.
+        session (SessionDependency): Sesión de la base de datos.
+        current_user (User): Usuario actual autenticado.
+    
+    Raises:
+        HTTPException: Si el usuario no existe, no es un asistente, o no tiene permisos.
+    """
+    from app.models.Role import Role
+    
+    # Verificar que el usuario actual tiene permisos (organizador o asistente eliminando su propio perfil)
+    if current_user.role not in [Role.ORGANIZER, Role.ASSISTANT]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Si es asistente, solo puede eliminar su propio perfil
+    if current_user.role == Role.ASSISTANT and current_user.id != assistant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own profile"
+        )
+    
+    # Verificar que el usuario existe
+    user = session.get(User, assistant_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assistant not found"
+        )
+    
+    # Verificar que el asistente existe
+    assistant = session.get(Assistant, assistant_id)
+    if not assistant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assistant profile not found"
+        )
+    
+    try:
+        # Eliminar primero el perfil de asistente, luego el usuario
+        # (debido a las relaciones de clave foránea)
+        session.delete(assistant)
+        session.delete(user)
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete assistant due to existing relationships (registrations, attendances, etc.)"
+        ) from e
