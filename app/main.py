@@ -62,6 +62,19 @@ async def lifespan(app: FastAPI):
     # Code to run before the server starts
     create_db_and_tables()
 
+    # Imagen inicial para evitar errores de reconocimiento facial.
+    if not pl.Path("./data/people_imgs/test.jpg").exists():
+        img = requests.get("https://www.thispersondoesnotexist.com")
+        img_path = pl.Path("./data/people_imgs/").resolve() / "test.jpg"
+        img_path.write_bytes(img.content)
+
+    # Si hay más de tres elementos en la carpeta people_imgs, eliminar test.jpg
+    people_imgs_path = pl.Path("./data/people_imgs").resolve()
+    if len(list(people_imgs_path.iterdir())) > 3:
+        test_img_path = people_imgs_path / "test.jpg"
+        if test_img_path.exists():
+            test_img_path.unlink()
+
     # Add admin user if it doesn't exist
     with Session(engine) as session:
         if not (
