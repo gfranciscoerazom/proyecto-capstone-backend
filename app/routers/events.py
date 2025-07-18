@@ -4,15 +4,16 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import sqlalchemy
-from fastapi import (APIRouter, Body, Form, HTTPException, Path, Query,
-                     Security, status)
+from fastapi import (APIRouter, Body, Depends, Form, HTTPException, Path, Query,
+                     Security, UploadFile, status)
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
+import sqlalchemy.exc
 from sqlmodel import select
 
 from app.db.database import (Attendance, Event, EventCreate, EventDate,
                              EventDateCreate, EventPublicWithEventDate,
-                             EventPublicWithNoDeletedEventDate, Registration,
+                             EventPublicWithNoDeletedEventDate, EventUpdate, Registration,
                              SessionDependency, User, get_current_active_user)
 from app.helpers.files import safe_path_join
 from app.helpers.validations import are_unique_dates, save_image
@@ -78,6 +79,7 @@ async def get_upcoming_events(
 @router.post(
     "/add",
     response_model=EventPublicWithEventDate,
+    status_code=status.HTTP_201_CREATED,
 
     summary="Add an event",
     response_description="The added event",
@@ -146,15 +148,220 @@ async def add_event(
     return new_event
 
 
+@router.patch(
+    "/{event_id}",
+    response_model=EventPublicWithEventDate,
+    summary="Update an event by ID",
+    response_description="Successful Response with the updated event",
+)
+async def update_event(
+    event_id: int,
+    event: EventUpdate,
+    session: SessionDependency
+):
+    """
+    Update an event by ID.
+
+    This endpoint allows users to update an existing event by providing the event ID and the updated event information.
+
+    \f
+
+    Args:
+    - event_id (int): The ID of the event to update.
+    - event (EventUpdate): The updated event information.
+    - session (SessionDependency): The database session dependency.
+
+    Returns:
+    - Event: The updated event.
+    """
+    db_event = session.get(Event, event_id)
+    if not db_event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    event_data = event.model_dump(exclude_unset=True)
+    db_event.sqlmodel_update(event_data)
+    session.add(db_event)
+    session.commit()
+    session.refresh(db_event)
+    return db_event
+
+
+# Método para actualizar la imagen de un evento
+@router.patch(
+    "/{event_id}/image",
+    response_model=EventPublicWithEventDate,
+    summary="Update event image by ID",
+    response_description="Successful Response with the updated event",
+)
+async def update_event_image(
+    event_id: int,
+    image: UploadFile,
+    session: SessionDependency
+):
+    """
+    Update the image of an event by ID.
+
+    This endpoint allows users to update the image of an existing event by providing the event ID and the new image.
+
+    \f
+
+    Args:
+    - event_id (int): The ID of the event to update.
+    - image (UploadFile): The new image file.
+    - session (SessionDependency): The database session dependency.
+
+    Returns:
+    - Event: The updated event.
+    """
+    db_event = session.get(Event, event_id)
+    if not db_event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Eliminar la imagen anterior si existe
+    if db_event.image_uuid:
+        image_path: pl.Path = pl.Path(
+            f"./data/events_imgs/{db_event.image_uuid}.png"
+        )
+        if image_path.exists():
+            image_path.unlink()
+
+    # Guardar la nueva imagen
+    new_image_uuid = await save_image(image=image, folder="events_imgs")
+    db_event.image_uuid = new_image_uuid
+
+    session.add(db_event)
+    session.commit()
+    session.refresh(db_event)
+    return db_event
+
+
+@router.get(
+    "/all",
+    response_model=list[EventPublicWithEventDate],
+)
+async def get_events(
+    session: SessionDependency
+):
+    """
+    Get all events.
+
+    This endpoint retrieves a list of all events in the system.
+
+    \f
+
+    :param session: The database session dependency to connect to the database.
+    :type session: SessionDependency
+
+    :return: A list of all events.
+    :rtype: list[EventPublicWithNoDeletedEventDate]
+    """
+    events = session.exec(
+        select(Event)
+    ).all()
+    if not events:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No events found",
+        )
+    return events
+
+
+@router.get(
+    "/my-registered-events",
+
+    summary="Get all events where the current user is registered",
+    response_description="List of events where the current user is registered",
+)
+async def read_users_me(
+    current_user: Annotated[
+        User,
+        Depends(
+            get_current_active_user,
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Get all events where the current user is registered.
+
+    This endpoint retrieves a list of events that the currently authenticated user is registered for.
+
+    :param current_user: The currently authenticated user.
+    :type current_user: User
+
+    :return: A list of events where the current user is registered.
+    :rtype: list[EventPublicWithEventDate]
+    """
+    registrations = session.exec(
+        select(Registration)
+        .where(Registration.companion_id == current_user.id)
+    ).all()
+
+    if not registrations:
+        return []
+
+    event_ids = [registration.event_id for registration in registrations]
+    events = session.exec(
+        select(Event)
+        .where(Event.id.in_(event_ids))
+    ).all()
+
+    return events
+
+
+@router.get(
+    "/events-to-react",
+    response_model=list[EventPublicWithEventDate],
+    summary="Get events to react",
+    response_description="List of events to react",
+)
+async def get_events_to_react(
+    current_user: Annotated[
+        User,
+        Depends(
+            get_current_active_user,
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Get events to react.
+
+    This endpoint retrieves a list of events that the currently authenticated user can react to.
+
+    :param current_user: The currently authenticated user.
+    :type current_user: User
+
+    :return: A list of events to react to.
+    :rtype: list[EventPublicWithEventDate]
+    """
+    my_registered_events = session.exec(
+        select(Registration)
+        .where(Registration.companion_id == current_user.id, Registration.reaction_date == None)
+    ).all()
+
+    if not my_registered_events:
+        return []
+
+    event_ids = [
+        registration.event_id for registration in my_registered_events]
+    events = session.exec(
+        select(Event)
+        .where(Event.id.in_(event_ids))
+    ).all()
+
+    return events
+
+
 @router.get(
     "/{event_id}",
     response_model=EventPublicWithEventDate,
-    dependencies=[
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.ORGANIZER]
-        )
-    ],
+    # dependencies=[
+    #     Security(
+    #         get_current_active_user,
+    #         scopes=[Scopes.ORGANIZER]
+    #     )
+    # ],
 
     summary="Get an event by ID",
     response_description="Successful Response with the event",
@@ -314,6 +521,7 @@ async def add_event_dates(
 @router.post(
     "/{event_id}/date/add",
     response_model=EventPublicWithEventDate,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[
         Security(
             get_current_active_user,
@@ -382,14 +590,7 @@ async def add_event_date(
 
 @router.delete(
     "/date/{event_date_id}",
-    response_model=EventPublicWithEventDate,
 
-    dependencies=[
-        Security(
-            get_current_active_user,
-            scopes=[Scopes.ORGANIZER]
-        )
-    ],
     summary="Delete an event date",
     response_description="The deleted event date",
 )
@@ -402,7 +603,7 @@ async def delete_event_date(
         )
     ],
     session: SessionDependency,
-) -> Event:
+):
     """Endpoint to change to true the deleted parameter of an event date.
 
     :param event_date_id: The ID of the event date to be marked as deleted.
@@ -419,12 +620,8 @@ async def delete_event_date(
             detail="Event date not found",
         )
 
-    event_date.deleted = True
-    session.add(event_date)
+    session.delete(event_date)
     session.commit()
-    session.refresh(event_date)
-
-    return event_date.event
 
 
 @router.post(
@@ -517,5 +714,168 @@ async def add_attendance(
 
     return new_attendance
 
+
+@router.post(
+    "/add/attendance/{event_date_id}/{event_id}/{companion_id}",
+    response_model=Attendance,
+    summary="Add an attendance to an event",
+    response_description="The added attendance",
+)
+async def add_attendance_by_companion(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event date ID",
+            description="The ID of the event date to add an attendance to.",
+        )
+    ],
+    event_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event ID",
+            description="The ID of the event to add an attendance to.",
+        )
+    ],
+    companion_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Companion ID",
+            description="The ID of the companion to add an attendance to.",
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Endpoint to add an attendance to an event.
+
+    This endpoint allows users to register attendance for a specific event date by providing the event ID, event date ID, and companion ID.
+
+    \f
+
+    :param event_date_id: The ID of the event date to add attendance to.
+    :type event_date_id: PositiveInt
+    :param event_id: The ID of the event to add attendance to.
+    :type event_id: PositiveInt
+    :param companion_id: The ID of the companion to add attendance for.
+    :type companion_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The added attendance.
+    :rtype: Attendance
+    """
+    if not (registration := session.exec(
+        select(Registration)
+        .where(
+            Registration.event_id == event_id,
+            Registration.companion_id == companion_id,
+        )
+    ).first()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registration not found",
+        )
+
+    if not (event_date := session.get(EventDate, event_date_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event date not found",
+        )
+
+    attendance = Attendance(
+        event_date=event_date,
+        registration=registration,
+    )
+
+    session.add(attendance)
+    try:
+        session.commit()
+    except sqlalchemy.exc.IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        ) from e
+    session.refresh(attendance)
+
+    return attendance
+
+
+@router.delete(
+    "/{event_id}",
+    response_model=EventPublicWithEventDate,
+
+    summary="Delete an event",
+    response_description="The deleted event",
+)
+async def delete_event(
+    event_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event ID",
+            description="The ID of the event to be deleted.",
+        )
+    ],
+    session: SessionDependency,
+) -> Event:
+    """
+    Endpoint to delete an event.
+
+    This endpoint allows users to delete an event by its ID.
+
+    \f
+
+    :param event_id: The ID of the event to be deleted.
+    :type event_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The deleted event.
+    :rtype: Event
+    """
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    session.delete(event)
+    session.commit()
+
+    return event
+
+
+@router.get(
+    "/{event_id}/dates",
+    response_model=list[EventDate],
+)
+async def get_event_dates(
+    event_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event ID",
+            description="The ID of the event to get dates for.",
+        )
+    ],
+    session: SessionDependency,
+) -> list[EventDate]:
+    """
+    Endpoint to get all dates for a specific event.
+
+    This endpoint allows users to retrieve all dates associated with a specific event by its ID.
+
+    \f
+
+    :param event_id: The ID of the event to get dates for.
+    :type event_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: A list of event dates.
+    :rtype: list[EventDate]
+    """
+    if not (event := session.get(Event, event_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    return event.event_dates
 
 # endregion

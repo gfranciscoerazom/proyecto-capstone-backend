@@ -15,3 +15,5 @@ cryptography
 pytest-xdist
 pytest-xdist[psutil]
 pytest-cov
+apscheduler
+prometheus-fastapi-instrumentator

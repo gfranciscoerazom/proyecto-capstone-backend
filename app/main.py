@@ -24,11 +24,13 @@ import requests
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.concurrency import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
-from app.db.database import (SessionDependency, User, UserPublic, create_db_and_tables,
-                             engine, get_current_active_user)
+from app.db.database import (SessionDependency, User, UserPublic,
+                             create_db_and_tables, engine,
+                             get_current_active_user)
 from app.models.Role import Role
 from app.models.Scopes import Scopes
 from app.models.Tags import tags_metadata
@@ -59,6 +61,19 @@ async def lifespan(app: FastAPI):
     """
     # Code to run before the server starts
     create_db_and_tables()
+
+    # Imagen inicial para evitar errores de reconocimiento facial.
+    if not pl.Path("./data/people_imgs/test.jpg").exists():
+        img = requests.get("https://www.thispersondoesnotexist.com")
+        img_path = pl.Path("./data/people_imgs/").resolve() / "test.jpg"
+        img_path.write_bytes(img.content)
+
+    # Si hay más de tres elementos en la carpeta people_imgs, eliminar test.jpg
+    people_imgs_path = pl.Path("./data/people_imgs").resolve()
+    if len(list(people_imgs_path.iterdir())) > 3:
+        test_img_path = people_imgs_path / "test.jpg"
+        if test_img_path.exists():
+            test_img_path.unlink()
 
     # Add admin user if it doesn't exist
     with Session(engine) as session:
@@ -344,6 +359,16 @@ async def add_process_time_header(
     process_time = time.perf_counter() - start_time
     response.headers["X-Process-Time"] = str(process_time)
     return response
+
+
+app.add_middleware(
+    CORSMiddleware,
+    # Cambia el puerto si es necesario
+    allow_origins=["http://127.0.0.1:8001"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # endregion
 
 

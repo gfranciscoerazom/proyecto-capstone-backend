@@ -24,7 +24,8 @@ from app.models.Token import TokenData
 from app.models.TypeCapacity import TypeCapacity
 from app.models.TypeCompanion import TypeCompanion
 from app.models.TypeId import TypeId
-from app.security.security import oauth2_scheme, verify_password
+from app.security.security import (get_password_hash, oauth2_scheme,
+                                   verify_password)
 from app.settings.config import settings
 
 # region engine
@@ -283,9 +284,10 @@ class User(UserBase, table=True):
         """Validate that if the role is assistant, the email is not from the UDLA domain. (udla.edu.ec) and if the role is organizer or staff, the email is from the UDLA domain."""
         match self.role:
             case Role.ASSISTANT:
-                if self.email.endswith("udla.edu.ec"):
+                if self.email.endswith("udla.edu.ec") or not (self.email.endswith("@gmail.com") or self.email.endswith("@hotmail.com") or self.email.endswith("@outlook.com") or self.email.endswith("@protonmail.com") or self.email.endswith("@yahoo.com")):
                     raise ValueError(
-                        "Assistant email cannot be from UDLA domain")
+                        "Email is not valid")
+
             case Role.ORGANIZER | Role.STAFF:
                 if not self.email.endswith("udla.edu.ec"):
                     raise ValueError(
@@ -324,6 +326,10 @@ class UserCreate(UserBase):
         title="Password",
         description="User password"
     )
+
+    def get_password_hash(self) -> bytes:
+        """Get the hashed password of the user."""
+        return get_password_hash(self.password)
 
 
 class UserUpdate(SQLModel):
@@ -458,7 +464,8 @@ class Event(EventBase, table=True):
         back_populates="organized_events"
     )
     event_dates: list["EventDate"] = Relationship(
-        back_populates="event"
+        back_populates="event",
+        cascade_delete=True,
     )
     registrations: list["Registration"] = Relationship(
         back_populates="event"
@@ -529,21 +536,15 @@ class EventUpdate(SQLModel):
     name: str | None = Field(
         default=None, title="Name", description="Event name")
     description: str | None = Field(
-        default=None, title="Description", description="Event description")
+        default=None, title="Description", description="Event description", sa_type=Text)
     location: str | None = Field(
         default=None, title="Location", description="Event location")
     maps_link: GoogleMapsURL | None = Field(
         default=None, title="Maps Link", description="Event maps link (https://maps.app.goo.gl/)")
-    max_capacity: int | None = Field(
-        default=None, title="Max Capacity", description="Event maximum capacity")
-    venue_capacity: int | None = Field(
-        default=None, title="Venue Capacity", description="Event venue capacity")
-    image: str | None = Field(
-        default=None, title="Event Image", description="Path to event image")
-    is_cancelled: bool | None = Field(
-        default=None, title="Is Cancelled", description="Event cancellation status")
-    organizer_id: int | None = Field(
-        default=None, title="Organizer ID", description="Organizer User ID")
+    capacity: PositiveInt | None = Field(
+        default=None, ge=1, title="Max Capacity", description="Event maximum capacity")
+    capacity_type: TypeCapacity | None = Field(
+        default=None, title="Capacity Type", description="Type of capacity for the event")
 
 
 # region Attendance
@@ -682,6 +683,7 @@ class EventDate(EventDateBase, table=True):
         default=0,
         foreign_key="event.id",
         index=True,
+        ondelete="CASCADE",
 
         title="Event ID",
         description="Foreign key to Event table"
