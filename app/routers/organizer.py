@@ -111,7 +111,7 @@ async def change_face_recognition_ai_model(
     if threshold:
         os.environ["FACE_RECOGNITION_AI_THRESHOLD"] = str(threshold)
 
-    if threshold == 0:
+    if threshold == 0 and "FACE_RECOGNITION_AI_THRESHOLD" in os.environ:
         del os.environ["FACE_RECOGNITION_AI_THRESHOLD"]
 
     update_settings()
