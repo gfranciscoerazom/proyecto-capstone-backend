@@ -880,6 +880,44 @@ async def get_event_dates(
 
 
 @router.get(
+    "/registered/all",
+    response_model=list[UserAssistantPublic],
+    summary="Get all registered users",
+    response_description="List of all registered users",
+)
+async def get_all_registered_users(
+    session: SessionDependency,
+) -> list[UserAssistantPublic]:
+    """
+    Endpoint to get all users registered for any event.
+
+    This endpoint retrieves a list of all users who are registered for any event.
+
+    \f
+
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: A list of all registered users.
+    :rtype: list[UserAssistantPublic]
+    """
+    registrations = session.exec(
+        select(Registration)
+    ).all()
+
+    if not registrations:
+        return []  # type: ignore
+
+    user_ids = {registration.companion_id for registration in registrations}
+    print("User IDs: " + str(user_ids))
+    users = session.exec(
+        select(User)
+        .where(User.id.in_(user_ids))
+    ).all()
+
+    return [UserAssistantPublic.model_validate(user) for user in users]
+
+
+@router.get(
     "/registered/{event_id}",
     response_model=list[UserAssistantPublic],
     summary="Get all users registered for an event",
@@ -918,6 +956,44 @@ async def get_registered_users(
         return []  # type: ignore
 
     user_ids = [registration.companion_id for registration in registrations]
+    users = session.exec(
+        select(User)
+        .where(User.id.in_(user_ids))
+    ).all()
+
+    return [UserAssistantPublic.model_validate(user) for user in users]
+
+
+@router.get(
+    "/attendances-users/all",
+    response_model=list[UserAssistantPublic],
+    summary="Get all users who attended any event date",
+    response_description="List of users who attended any event date",
+)
+async def get_all_attendance_users(
+    session: SessionDependency,
+) -> list[UserAssistantPublic]:
+    """
+    Endpoint to get all users who attended any event date.
+
+    This endpoint retrieves a list of users who attended any event date.
+
+    \f
+
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: A list of users who attended any event date.
+    :rtype: list[UserAssistantPublic]
+    """
+    attendances = session.exec(
+        select(Attendance)
+    ).all()
+
+    if not attendances:
+        return []
+
+    user_ids = {
+        attendance.registration.companion_id for attendance in attendances}
     users = session.exec(
         select(User)
         .where(User.id.in_(user_ids))
