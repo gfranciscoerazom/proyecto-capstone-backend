@@ -14,7 +14,7 @@ from sqlmodel import select
 from app.db.database import (Attendance, Event, EventCreate, EventDate,
                              EventDateCreate, EventPublicWithEventDate,
                              EventPublicWithNoDeletedEventDate, EventUpdate, Registration,
-                             SessionDependency, User, get_current_active_user)
+                             SessionDependency, User, UserAssistantPublic, get_current_active_user)
 from app.helpers.files import safe_path_join
 from app.helpers.validations import are_unique_dates, save_image
 from app.models.Scopes import Scopes
@@ -878,4 +878,174 @@ async def get_event_dates(
 
     return event.event_dates
 
+
+@router.get(
+    "/registered/all",
+    response_model=list[UserAssistantPublic],
+    summary="Get all registered users",
+    response_description="List of all registered users",
+)
+async def get_all_registered_users(
+    session: SessionDependency,
+) -> list[UserAssistantPublic]:
+    """
+    Endpoint to get all users registered for any event.
+
+    This endpoint retrieves a list of all users who are registered for any event.
+
+    \f
+
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: A list of all registered users.
+    :rtype: list[UserAssistantPublic]
+    """
+    registrations = session.exec(
+        select(Registration)
+    ).all()
+
+    if not registrations:
+        return []  # type: ignore
+
+    user_ids = {registration.companion_id for registration in registrations}
+    print("User IDs: " + str(user_ids))
+    users = session.exec(
+        select(User)
+        .where(User.id.in_(user_ids))
+    ).all()
+
+    return [UserAssistantPublic.model_validate(user) for user in users]
+
+
+@router.get(
+    "/registered/{event_id}",
+    response_model=list[UserAssistantPublic],
+    summary="Get all users registered for an event",
+    response_description="List of users registered for the event",
+)
+async def get_registered_users(
+    event_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event ID",
+            description="The ID of the event to get registered users for.",
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Endpoint to get all users registered for an event.
+
+    This endpoint retrieves a list of users who are registered for a specific event by its ID.
+
+    \f
+
+    :param event_id: The ID of the event to get registered users for.
+    :type event_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: A list of users registered for the event.
+    :rtype: list[UserAssistantPublic]
+    """
+    registrations = session.exec(
+        select(Registration)
+        .where(Registration.event_id == event_id)
+    ).all()
+
+    if not registrations:
+        return []  # type: ignore
+
+    user_ids = [registration.companion_id for registration in registrations]
+    users = session.exec(
+        select(User)
+        .where(User.id.in_(user_ids))
+    ).all()
+
+    return [UserAssistantPublic.model_validate(user) for user in users]
+
+
+@router.get(
+    "/attendances-users/all",
+    response_model=list[UserAssistantPublic],
+    summary="Get all users who attended any event date",
+    response_description="List of users who attended any event date",
+)
+async def get_all_attendance_users(
+    session: SessionDependency,
+) -> list[UserAssistantPublic]:
+    """
+    Endpoint to get all users who attended any event date.
+
+    This endpoint retrieves a list of users who attended any event date.
+
+    \f
+
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: A list of users who attended any event date.
+    :rtype: list[UserAssistantPublic]
+    """
+    attendances = session.exec(
+        select(Attendance)
+    ).all()
+
+    if not attendances:
+        return []
+
+    user_ids = {
+        attendance.registration.companion_id for attendance in attendances}
+    users = session.exec(
+        select(User)
+        .where(User.id.in_(user_ids))
+    ).all()
+
+    return [UserAssistantPublic.model_validate(user) for user in users]
+
+
+@router.get(
+    "/attendances-users/{event_date_id}",
+    response_model=list[UserAssistantPublic],
+    summary="Get all users who attended an event date",
+    response_description="List of users who attended the event date",
+)
+async def get_attendance_users(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event Date ID",
+            description="The ID of the event date to get attendance users for.",
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Endpoint to get all users who attended an event date.
+
+    This endpoint retrieves a list of users who attended a specific event date by its ID.
+
+    \f
+
+    :param event_date_id: The ID of the event date to get attendance users for.
+    :type event_date_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: A list of users who attended the event date.
+    :rtype: list[UserAssistantPublic]
+    """
+    attendances = session.exec(
+        select(Attendance)
+        .where(Attendance.event_date_id == event_date_id)
+    ).all()
+
+    if not attendances:
+        return []
+
+    user_ids = [
+        attendance.registration.companion_id for attendance in attendances]
+    users = session.exec(
+        select(User)
+        .where(User.id.in_(user_ids))
+    ).all()
+
+    return [UserAssistantPublic.model_validate(user) for user in users]
 # endregion
