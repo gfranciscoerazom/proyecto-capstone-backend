@@ -20,6 +20,7 @@ from app.helpers.validations import are_unique_dates, save_image
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
 from app.models.TypeCapacity import TypeCapacity
+from app.settings.config import settings
 
 router = APIRouter(
     prefix="/events",
@@ -134,7 +135,7 @@ async def add_event(
         session.commit()
     except sqlalchemy.exc.IntegrityError as e:
         image_path: pl.Path = pl.Path(
-            f"/opt/render/data/events_imgs/{event_image_uuid}.png"
+            f"{settings.DATA_FOLDER}/events_imgs/{event_image_uuid}.png"
         )
         if image_path.exists():
             image_path.unlink()
@@ -220,7 +221,7 @@ async def update_event_image(
     # Eliminar la imagen anterior si existe
     if db_event.image_uuid:
         image_path: pl.Path = pl.Path(
-            f"/opt/render/data/events_imgs/{db_event.image_uuid}.png"
+            f"{settings.DATA_FOLDER}/events_imgs/{db_event.image_uuid}.png"
         )
         if image_path.exists():
             image_path.unlink()
@@ -435,7 +436,7 @@ def get_event_image(
         HTTPException: If the image is not found in the images database.
     """
     normalized_image_path: pl.Path = safe_path_join(
-        pl.Path("/opt/render/data/events_imgs"),
+        pl.Path(f"{settings.DATA_FOLDER}/events_imgs"),
         f"{image_uuid}.png"
     )
 

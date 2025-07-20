@@ -22,6 +22,7 @@ from app.models.Scopes import Scopes
 from app.models.Tags import Tags
 from app.models.TypeCompanion import TypeCompanion
 from app.security.security import get_password_hash
+from app.settings.config import settings
 
 router = APIRouter(
     prefix="/assistant",
@@ -325,7 +326,7 @@ def get_user_image(
     """
     try:
         normalized_image_path: pl.Path = safe_path_join(
-            pl.Path("/opt/render/data/people_imgs"),
+            pl.Path(f"{settings.DATA_FOLDER}/people_imgs"),
             f"{image_uuid}.png"
         )
     except ValueError:
