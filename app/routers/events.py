@@ -4,7 +4,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import sqlalchemy
-from fastapi import (APIRouter, Body, Depends, Form, HTTPException, Path, Query,
+from fastapi import (APIRouter, BackgroundTasks, Body, Depends, Form, HTTPException, Path, Query,
                      Security, UploadFile, status)
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
@@ -16,6 +16,7 @@ from app.db.database import (Attendance, Event, EventCreate, EventDate,
                              EventPublicWithNoDeletedEventDate, EventUpdate, Registration,
                              SessionDependency, User, UserAssistantPublic, get_current_active_user)
 from app.helpers.files import safe_path_join
+from app.helpers.mail import send_event_rating_email
 from app.helpers.validations import are_unique_dates, save_image
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
@@ -658,6 +659,7 @@ async def add_attendance(
         )
     ],
     session: SessionDependency,
+    background_tasks: BackgroundTasks,
 ) -> Attendance:
     """
     Endpoint to add an attendance to an event.
@@ -717,6 +719,14 @@ async def add_attendance(
         ) from e
     session.refresh(new_attendance)
 
+    user = session.get(User, registration.companion_id)
+
+    if user:
+        background_tasks.add_task(
+            send_event_rating_email,
+            user=user,
+        )
+
     return new_attendance
 
 
@@ -749,6 +759,7 @@ async def add_attendance_by_companion(
         )
     ],
     session: SessionDependency,
+    background_tasks: BackgroundTasks,
 ):
     """
     Endpoint to add an attendance to an event.
@@ -800,6 +811,14 @@ async def add_attendance_by_companion(
             detail=str(e)
         ) from e
     session.refresh(attendance)
+
+    user = session.get(User, companion_id)
+
+    if user:
+        background_tasks.add_task(
+            send_event_rating_email,
+            user=user,
+        )
 
     return attendance
 
