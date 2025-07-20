@@ -64,6 +64,8 @@ async def lifespan(app: FastAPI):
 
     # Imagen inicial para evitar errores de reconocimiento facial.
     if not pl.Path("/opt/render/data/people_imgs/test.jpg").exists():
+        # Verificar que las carpetas padres estén creadas
+        pl.Path("/opt/render/data/people_imgs").mkdir(parents=True, exist_ok=True)
         img = requests.get("https://www.thispersondoesnotexist.com")
         img_path = pl.Path(
             "/opt/render/data/people_imgs/").resolve() / "test.jpg"
