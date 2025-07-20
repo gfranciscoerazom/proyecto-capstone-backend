@@ -345,14 +345,17 @@ async def get_events_to_react(
     if not my_registered_events:
         return []
 
-    event_ids = [
-        registration.event_id for registration in my_registered_events]
-    events = session.exec(
-        select(Event)
-        .where(Event.id.in_(event_ids))
+    attendances = session.exec(
+        select(Attendance)
+        .where(Attendance.registration_id.in_(
+            [registration.id for registration in my_registered_events])
+        )
     ).all()
 
-    return events
+    if not attendances:
+        return []
+
+    return [attendance.event_date.event for attendance in attendances]
 
 
 @router.get(
@@ -1051,4 +1054,82 @@ async def get_attendance_users(
         })
 
     return result
+
+
+@router.get(
+    "/info-event-by-date/{event_date_id}",
+    response_model=EventPublicWithEventDate,
+    summary="Get event info by event date ID",
+    response_description="Event info with event date",
+)
+async def get_event_info_by_date(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event Date ID",
+            description="The ID of the event date to get event info for.",
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Endpoint to get event info by event date ID.
+
+    This endpoint retrieves the event information associated with a specific event date by its ID.
+
+    \f
+
+    :param event_date_id: The ID of the event date to get event info for.
+    :type event_date_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The event information associated with the specified event date.
+    :rtype: EventPublicWithEventDate
+    """
+    if not (event_date := session.get(EventDate, event_date_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event date not found",
+        )
+
+    return event_date.event
+
+
+@router.get(
+    "/info-event-date/{event_date_id}",
+    response_model=EventDate,
+    summary="Get event date info by ID",
+    response_description="Event date info",
+)
+async def get_event_date_info(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event Date ID",
+            description="The ID of the event date to get info for.",
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Endpoint to get event date info by ID.
+
+    This endpoint retrieves the information of a specific event date by its ID.
+
+    \f
+
+    :param event_date_id: The ID of the event date to get info for.
+    :type event_date_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The information of the specified event date.
+    :rtype: EventDate
+    """
+    if not (event_date := session.get(EventDate, event_date_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event date not found",
+        )
+
+    return event_date
 # endregion
