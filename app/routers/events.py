@@ -21,6 +21,7 @@ from app.models.Scopes import Scopes
 from app.models.Tags import Tags
 from app.models.TypeCapacity import TypeCapacity
 from app.settings.config import settings
+from fastapi.responses import JSONResponse
 
 router = APIRouter(
     prefix="/events",
@@ -1005,9 +1006,9 @@ async def get_all_attendance_users(
 
 @router.get(
     "/attendances-users/{event_date_id}",
-    response_model=list[UserAssistantPublic],
+    response_model=list[dict],  # Cambiado a lista de diccionarios
     summary="Get all users who attended an event date",
-    response_description="List of users who attended the event date",
+    response_description="List of users and their attendance info for the event date",
 )
 async def get_attendance_users(
     event_date_id: Annotated[
@@ -1022,7 +1023,7 @@ async def get_attendance_users(
     """
     Endpoint to get all users who attended an event date.
 
-    This endpoint retrieves a list of users who attended a specific event date by its ID.
+    This endpoint retrieves a list of users and their attendance info for a specific event date by its ID.
 
     \f
 
@@ -1030,8 +1031,8 @@ async def get_attendance_users(
     :type event_date_id: PositiveInt
     :param session: The database session dependency.
     :type session: SessionDependency
-    :return: A list of users who attended the event date.
-    :rtype: list[UserAssistantPublic]
+    :return: A list of dicts with user and attendance info.
+    :rtype: list[dict]
     """
     attendances = session.exec(
         select(Attendance)
@@ -1041,12 +1042,13 @@ async def get_attendance_users(
     if not attendances:
         return []
 
-    user_ids = [
-        attendance.registration.companion_id for attendance in attendances]
-    users = session.exec(
-        select(User)
-        .where(User.id.in_(user_ids))
-    ).all()
+    result = []
+    for attendance in attendances:
+        user = session.get(User, attendance.registration.companion_id)
+        result.append({
+            "user": UserAssistantPublic.model_validate(user),
+            "attendance": attendance
+        })
 
-    return [UserAssistantPublic.model_validate(user) for user in users]
+    return result
 # endregion
