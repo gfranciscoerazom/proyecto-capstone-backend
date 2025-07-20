@@ -77,7 +77,7 @@ async def save_image(image: UploadFile, folder: str) -> UUID:
     """
     image_uuid: UUID = uuid.uuid4()
     image_path: Path = Path(
-        f"./data/{folder}/{image_uuid}.png"
+        f"/opt/render/data/{folder}/{image_uuid}.png"
     )
     image_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -100,7 +100,7 @@ async def save_user_image(image: UploadFile, folder: str = "people_imgs") -> UUI
     :raises HTTPException: If the image does not contain exactly one person
     """
     image_uuid: UUID = await save_image(image, folder)
-    image_path: Path = Path(f"./data/{folder}/{image_uuid}.png")
+    image_path: Path = Path(f"/opt/render/data/{folder}/{image_uuid}.png")
 
     if not is_single_person(image_path):
         if image_path.exists():

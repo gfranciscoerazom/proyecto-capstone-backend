@@ -325,7 +325,7 @@ def get_user_image(
     """
     try:
         normalized_image_path: pl.Path = safe_path_join(
-            pl.Path("./data/people_imgs"),
+            pl.Path("/opt/render/data/people_imgs"),
             f"{image_uuid}.png"
         )
     except ValueError:

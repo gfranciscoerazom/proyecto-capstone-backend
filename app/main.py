@@ -63,13 +63,14 @@ async def lifespan(app: FastAPI):
     create_db_and_tables()
 
     # Imagen inicial para evitar errores de reconocimiento facial.
-    if not pl.Path("./data/people_imgs/test.jpg").exists():
+    if not pl.Path("/opt/render/data/people_imgs/test.jpg").exists():
         img = requests.get("https://www.thispersondoesnotexist.com")
-        img_path = pl.Path("./data/people_imgs/").resolve() / "test.jpg"
+        img_path = pl.Path(
+            "/opt/render/data/people_imgs/").resolve() / "test.jpg"
         img_path.write_bytes(img.content)
 
     # Si hay más de tres elementos en la carpeta people_imgs, eliminar test.jpg
-    people_imgs_path = pl.Path("./data/people_imgs").resolve()
+    people_imgs_path = pl.Path("/opt/render/data/people_imgs").resolve()
     if len(list(people_imgs_path.iterdir())) > 3:
         test_img_path = people_imgs_path / "test.jpg"
         if test_img_path.exists():
@@ -95,7 +96,7 @@ async def lifespan(app: FastAPI):
 
             if settings.ENVIRONMENT == "development":
                 # Populate the database with mock data
-                with open("./data/mock/tables_urls.json", "r") as file:
+                with open("/opt/render/data/mock/tables_urls.json", "r") as file:
                     tables_urls = json.load(file)
 
                 for table, url in tables_urls:
@@ -112,7 +113,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Code to run after the server stops
-    temp_imgs_path = pl.Path("./data/temp_imgs").resolve()
+    temp_imgs_path = pl.Path("/opt/render/data/temp_imgs").resolve()
     if temp_imgs_path.exists() and temp_imgs_path.is_dir():
         for item in temp_imgs_path.iterdir():
             if item.name == ".gitkeep":

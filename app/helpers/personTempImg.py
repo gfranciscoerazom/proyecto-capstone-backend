@@ -84,7 +84,7 @@ class PersonImg:
         try:
             similar_people = DeepFace.find(  # type: ignore
                 img_path=temp_file_path,
-                db_path="./data/people_imgs",
+                db_path="/opt/render/data/people_imgs",
                 model_name=settings.FACE_RECOGNITION_AI_MODEL,
                 threshold=settings.FACE_RECOGNITION_AI_THRESHOLD,
                 detector_backend="yunet",
@@ -163,7 +163,7 @@ class PersonImg:
 
         # Save the image to the image database
         new_img_path = Path(
-            f"./data/people_imgs/{image_uuid}.png"
+            f"/opt/render/data/people_imgs/{image_uuid}.png"
         )
 
         new_img_path.parent.mkdir(parents=True, exist_ok=True)

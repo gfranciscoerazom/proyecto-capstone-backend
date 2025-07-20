@@ -134,7 +134,7 @@ async def add_event(
         session.commit()
     except sqlalchemy.exc.IntegrityError as e:
         image_path: pl.Path = pl.Path(
-            f"./data/events_imgs/{event_image_uuid}.png"
+            f"/opt/render/data/events_imgs/{event_image_uuid}.png"
         )
         if image_path.exists():
             image_path.unlink()
@@ -220,7 +220,7 @@ async def update_event_image(
     # Eliminar la imagen anterior si existe
     if db_event.image_uuid:
         image_path: pl.Path = pl.Path(
-            f"./data/events_imgs/{db_event.image_uuid}.png"
+            f"/opt/render/data/events_imgs/{db_event.image_uuid}.png"
         )
         if image_path.exists():
             image_path.unlink()
@@ -435,7 +435,7 @@ def get_event_image(
         HTTPException: If the image is not found in the images database.
     """
     normalized_image_path: pl.Path = safe_path_join(
-        pl.Path("./data/events_imgs"),
+        pl.Path("/opt/render/data/events_imgs"),
         f"{image_uuid}.png"
     )
 
