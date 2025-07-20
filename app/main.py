@@ -364,7 +364,8 @@ async def add_process_time_header(
 app.add_middleware(
     CORSMiddleware,
     # Cambia el puerto si es necesario
-    allow_origins=["http://127.0.0.1:8001"],
+    allow_origins=["http://127.0.0.1:8001", "https://proyecto-capstone-frontend.onrender.com",
+                   "https://proyecto-capstone-backend.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

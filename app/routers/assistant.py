@@ -178,7 +178,13 @@ async def get_assistants_by_image(
     Raises:
         HTTPException: If no assistants are found in the images database or the main database.
     """
-    path_to_similar_people = PersonImg(image).path_imgs_similar_people()
+    try:
+        path_to_similar_people = PersonImg(image).path_imgs_similar_people()
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        ) from e
     uuids_list = [UUID(img.stem) for img in path_to_similar_people]
 
     if len(path_to_similar_people) < 1:
@@ -769,39 +775,39 @@ async def update_assistant(
 ) -> User:
     """
     Actualiza parcialmente un asistente.
-    
+
     Este endpoint permite a un organizador actualizar cualquier asistente,
     o a un asistente actualizar su propio perfil.
-    
+
     Args:
         assistant_id (int): El ID del asistente a actualizar.
         user_update (UserUpdate): Los datos de usuario a actualizar.
         assistant_update (AssistantUpdate): Los datos de asistente a actualizar.
         session (SessionDependency): Sesión de la base de datos.
         current_user (User): Usuario actual autenticado.
-    
+
     Returns:
         UserAssistantPublic: El asistente actualizado.
-    
+
     Raises:
         HTTPException: Si el usuario no existe, no es un asistente, o no tiene permisos.
     """
     from app.models.Role import Role
-    
+
     # Verificar que el usuario tiene permisos (organizador o asistente)
     if current_user.role not in [Role.ORGANIZER, Role.ASSISTANT]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    
+
     # Si es asistente, solo puede actualizar su propio perfil
     if current_user.role == Role.ASSISTANT and current_user.id != assistant_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only update your own profile"
         )
-    
+
     # Verificar que el usuario existe
     user = session.get(User, assistant_id)
     if not user:
@@ -809,7 +815,7 @@ async def update_assistant(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assistant not found"
         )
-    
+
     # Verificar que el asistente existe
     assistant = session.get(Assistant, assistant_id)
     if not assistant:
@@ -817,21 +823,23 @@ async def update_assistant(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assistant profile not found"
         )
-    
+
     # Actualizar datos del usuario
     user_data = user_update.model_dump(exclude_unset=True)
-    
+
     # Si se está actualizando la contraseña, hashearla
     if "password" in user_data:
-        user_data["hashed_password"] = get_password_hash(user_data.pop("password"))
-    
+        user_data["hashed_password"] = get_password_hash(
+            user_data.pop("password"))
+
     # Actualizar los campos del usuario
     for field, value in user_data.items():
         setattr(user, field, value)
-    
+
     # Actualizar datos del asistente
-    assistant_data = assistant_update.model_dump(exclude_unset=True, exclude={"image"})
-    
+    assistant_data = assistant_update.model_dump(
+        exclude_unset=True, exclude={"image"})
+
     # Manejar actualización de imagen si se proporciona
     if assistant_update.image:
         # Nota: La actualización de imágenes requiere lógica compleja adicional
@@ -840,11 +848,11 @@ async def update_assistant(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail="Image update not implemented in this endpoint"
         )
-    
+
     # Actualizar los campos del asistente
     for field, value in assistant_data.items():
         setattr(assistant, field, value)
-    
+
     try:
         session.add(user)
         session.add(assistant)
@@ -855,7 +863,7 @@ async def update_assistant(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email or ID number already exists or data conflict"
         ) from e
-    
+
     return user
 
 
@@ -875,34 +883,34 @@ async def delete_assistant(
 ):
     """
     Elimina un asistente del sistema.
-    
+
     Este endpoint permite a un organizador eliminar cualquier asistente,
     o a un asistente eliminar su propio perfil.
-    
+
     Args:
         assistant_id (int): El ID del asistente a eliminar.
         session (SessionDependency): Sesión de la base de datos.
         current_user (User): Usuario actual autenticado.
-    
+
     Raises:
         HTTPException: Si el usuario no existe, no es un asistente, o no tiene permisos.
     """
     from app.models.Role import Role
-    
+
     # Verificar que el usuario actual tiene permisos (organizador o asistente eliminando su propio perfil)
     if current_user.role not in [Role.ORGANIZER, Role.ASSISTANT]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    
+
     # Si es asistente, solo puede eliminar su propio perfil
     if current_user.role == Role.ASSISTANT and current_user.id != assistant_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only delete your own profile"
         )
-    
+
     # Verificar que el usuario existe
     user = session.get(User, assistant_id)
     if not user:
@@ -910,7 +918,7 @@ async def delete_assistant(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assistant not found"
         )
-    
+
     # Verificar que el asistente existe
     assistant = session.get(Assistant, assistant_id)
     if not assistant:
@@ -918,7 +926,7 @@ async def delete_assistant(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assistant profile not found"
         )
-    
+
     try:
         # Eliminar primero el perfil de asistente, luego el usuario
         # (debido a las relaciones de clave foránea)
