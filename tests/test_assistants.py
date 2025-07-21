@@ -8,12 +8,12 @@ from faker import Faker
 from fastapi import status
 from fastapi.testclient import TestClient
 
-import pytest
-import os
+# import pytest
+# import os
 
-@pytest.fixture(scope="session", autouse=True)
-def ensure_temp_imgs_dir():
-    os.makedirs("data/temp_imgs", exist_ok=True)
+# @pytest.fixture(scope="session", autouse=True)
+# def ensure_temp_imgs_dir():
+#     os.makedirs("data/temp_imgs", exist_ok=True)
 
 
 def generate_assistant_email(faker: Faker) -> str:
