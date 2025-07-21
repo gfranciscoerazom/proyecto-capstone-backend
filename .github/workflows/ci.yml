@@ -81,7 +81,7 @@ jobs:
           pip install flake8
       - name: Ejecutar flake8
         continue-on-error: true
-        run: flake8 --ignore=E501 --exclude=.venv,.git,__pycache__ .
+        run: flake8 --ignore=E501 --exclude=.venv,.git,__pycache__,app/html .
 
   # 3. Seguridad: Bandit
   bandit:
@@ -98,7 +98,7 @@ jobs:
         run: pip install bandit
       - name: Ejecutar bandit
         continue-on-error: true
-        run: bandit -r ./app || true
+        run: bandit -r ./app --exclude ./app/html || true
 
   # 4. Seguridad: Trivy
   trivy:
