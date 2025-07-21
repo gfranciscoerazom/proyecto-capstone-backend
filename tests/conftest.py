@@ -1,4 +1,7 @@
 import pytest
+import shutil
+import tempfile
+from pathlib import Path
 from faker import Faker
 from faker.providers import BaseProvider
 from fastapi.testclient import TestClient
@@ -94,3 +97,65 @@ def token_fixture(client: TestClient, admin_user: tuple[User, str]):
     ).json()["access_token"]
 
     return token
+
+
+@pytest.fixture(name="clean_face_db")
+def clean_face_db_fixture():
+    """Clean up face recognition database before each test."""
+    import os
+    from app.settings.config import settings
+    
+    def clean_directory(path: Path):
+        """Helper function to clean a directory."""
+        if path.exists() and path.is_dir():
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                import time
+                time.sleep(0.1)
+                try:
+                    shutil.rmtree(path)
+                except OSError:
+                    pass
+        path.mkdir(parents=True, exist_ok=True)
+    
+    # Get the actual DATA_FOLDER from settings
+    try:
+        data_folder = getattr(settings, 'DATA_FOLDER', 'data')
+    except:
+        data_folder = 'data'
+    
+    # Clean up various possible face recognition database locations
+    paths_to_clean = [
+        Path("./data/people_imgs"),
+        Path("data/people_imgs"),
+        Path(f"{data_folder}/people_imgs"),
+    ]
+    
+    for people_imgs_path in paths_to_clean:
+        clean_directory(people_imgs_path)
+    
+    # Clean up any DeepFace model cache files
+    try:
+        temp_dir = Path(tempfile.gettempdir())
+        for pattern in ["*facenet*.pkl", "*ds_model*.pkl", "*representations*.pkl"]:
+            for pkl_file in temp_dir.glob(pattern):
+                try:
+                    pkl_file.unlink()
+                except OSError:
+                    pass
+    except Exception:
+        pass
+        
+    yield
+    
+    # Cleanup after test
+    for people_imgs_path in paths_to_clean:
+        if people_imgs_path.exists():
+            try:
+                shutil.rmtree(people_imgs_path)
+            except OSError:
+                pass
+
+
+
