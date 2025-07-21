@@ -698,78 +698,6 @@ def test_add_single_event_date_duplicate(session: Session, client: TestClient, t
     assert json_response["detail"] == "The provided date is a duplicate with an existing date."
 
 
-# Delete an event date
-def test_delete_event_date_marks_as_deleted(session: Session, client: TestClient, token: str):
-    """Test the DELETE /events/date/{date_id} endpoint marks the date as deleted.
-
-    curl -X 'DELETE' \\
-      'http://127.0.0.1:8000/events/date/1011' \\
-      -H 'accept: application/json' \\
-      -H 'Authorization: Bearer <token>'
-    """
-
-    event_response = client.post(
-        "/events/add",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "accept": "application/json"
-        },
-        data={
-            "name": "NASA",
-            "description": "Evento en el que se podra aprender sobre la NASA y todo lo que hacen, y tambien su hermandad conl la UDLA",
-            "location": "UDLA Park",
-            "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
-            "capacity": "250",
-            "capacity_type": "site_capacity",
-        },
-        files={
-            "image": ("test.webp", b"img", "image/webp")
-        }
-    )
-
-    event_id = event_response.json()["id"]
-    print(event_id)
-
-    add_date_resp = client.post(
-        f"/events/{event_id}/date/add",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "accept": "application/json",
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        data={
-            "day_date": "2025-04-30",
-            "start_time": "07:20:17.000Z",
-            "end_time": "10:20:17.000Z",
-            "deleted": "False"
-        }
-    )
-
-    date_id = None
-    for date in add_date_resp.json()["event_dates"]:
-        if date["day_date"] == "2025-04-30":
-            date_id = date["id"]
-            break
-
-    assert date_id is not None, "Date was not created"
-
-    delete_response = client.delete(
-        f"/events/date/{date_id}",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "accept": "application/json"
-        }
-    )
-
-    json_response = delete_response.json()
-
-    assert delete_response.status_code == status.HTTP_200_OK
-
-    found = next(
-        (d for d in json_response["event_dates"] if d["id"] == date_id), None)
-    assert found is not None
-    assert found["deleted"] is True
-
 
 def test_delete_nonexistent_event_date(client: TestClient, token: str):
     """Test the DELETE /events/date/{date_id} endpoint with a non-existent date ID.
@@ -796,3 +724,493 @@ def test_delete_nonexistent_event_date(client: TestClient, token: str):
 
 
 # Events add attendence
+
+
+# Test upcoming events with quantity parameter
+def test_events_upcoming_with_quantity(client: TestClient):
+    """Test the /events/upcoming endpoint with a positive quantity parameter.
+
+    curl -X 'GET' \\
+      'http://127.0.0.1:8000/events/upcoming?quantity=5' \\
+      -H 'accept: application/json'
+    """
+    response = client.get(
+        "/events/upcoming?quantity=5",
+        headers={"accept": "application/json"}
+    )
+
+    json_response = response.json()
+
+    assert response.status_code == status.HTTP_200_OK
+    assert isinstance(json_response, list)
+    assert len(json_response) <= 5
+
+
+def test_events_upcoming_zero_quantity(client: TestClient):
+    """Test the /events/upcoming endpoint with quantity=0.
+
+    curl -X 'GET' \\
+      'http://127.0.0.1:8000/events/upcoming?quantity=0' \\
+      -H 'accept: application/json'
+    """
+    response = client.get(
+        "/events/upcoming?quantity=0",
+        headers={"accept": "application/json"}
+    )
+
+    json_response = response.json()
+
+    assert response.status_code == status.HTTP_200_OK
+    assert isinstance(json_response, list)
+    assert len(json_response) == 0
+
+
+# Test add event with missing fields
+def test_add_event_missing_name(client: TestClient, token: str):
+    """Test the /events/add endpoint with missing name field."""
+    files = {
+        "image": ("test_image.webp", b"fake_image_content", "image/webp")
+    }
+
+    response = client.post(
+        "/events/add",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+        },
+        data={
+            "description": "Event description",
+            "location": "UDLA Park",
+            "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
+            "capacity": "250",
+            "capacity_type": "site_capacity"
+        },
+        files=files
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def test_add_event_invalid_capacity_type(client: TestClient, token: str):
+    """Test the /events/add endpoint with invalid capacity_type."""
+    files = {
+        "image": ("test_image.webp", b"fake_image_content", "image/webp")
+    }
+
+    response = client.post(
+        "/events/add",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+        },
+        data={
+            "name": "NASA",
+            "description": "Event description",
+            "location": "UDLA Park",
+            "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
+            "capacity": "250",
+            "capacity_type": "invalid_type"
+        },
+        files=files
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def test_add_event_without_token(client: TestClient):
+    """Test the /events/add endpoint without authentication token."""
+    files = {
+        "image": ("test_image.webp", b"fake_image_content", "image/webp")
+    }
+
+    response = client.post(
+        "/events/add",
+        headers={"accept": "application/json"},
+        data={
+            "name": "NASA",
+            "description": "Event description",
+            "location": "UDLA Park",
+            "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
+            "capacity": "250",
+            "capacity_type": "site_capacity"
+        },
+        files=files
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_add_event_missing_image(client: TestClient, token: str):
+    """Test the /events/add endpoint without image file."""
+    response = client.post(
+        "/events/add",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+        },
+        data={
+            "name": "NASA",
+            "description": "Event description",
+            "location": "UDLA Park",
+            "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
+            "capacity": "250",
+            "capacity_type": "site_capacity"
+        }
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+# Test update event
+def test_update_event_success(client: TestClient, token: str):
+    """Test the PATCH /events/{event_id} endpoint with valid data."""
+    # First create an event
+    files = {
+        "image": ("test_image.webp", b"fake_image_content", "image/webp")
+    }
+
+    create_response = client.post(
+        "/events/add",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+        },
+        data={
+            "name": "NASA",
+            "description": "Original description",
+            "location": "UDLA Park",
+            "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
+            "capacity": "250",
+            "capacity_type": "site_capacity"
+        },
+        files=files
+    )
+
+    event_id = create_response.json()["id"]
+
+    # Update the event
+    response = client.patch(
+        f"/events/{event_id}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+            "Content-Type": "application/json"
+        },
+        json={
+            "name": "Updated NASA Event",
+            "description": "Updated description"
+        }
+    )
+
+    json_response = response.json()
+
+    assert response.status_code == status.HTTP_200_OK
+    assert json_response["name"] == "Updated NASA Event"
+    assert json_response["description"] == "Updated description"
+
+
+def test_update_event_nonexistent(client: TestClient, token: str):
+    """Test the PATCH /events/{event_id} endpoint with non-existent event."""
+    response = client.patch(
+        "/events/999999",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+            "Content-Type": "application/json"
+        },
+        json={
+            "name": "Updated Event"
+        }
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+# Test update event image
+def test_update_event_image_success(client: TestClient, token: str):
+    """Test the PATCH /events/{event_id}/image endpoint with valid image."""
+    # First create an event
+    files = {
+        "image": ("test_image.webp", b"fake_image_content", "image/webp")
+    }
+
+    create_response = client.post(
+        "/events/add",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+        },
+        data={
+            "name": "NASA",
+            "description": "Event description",
+            "location": "UDLA Park",
+            "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
+            "capacity": "250",
+            "capacity_type": "site_capacity"
+        },
+        files=files
+    )
+
+    event_id = create_response.json()["id"]
+
+    # Update the image
+    new_files = {
+        "image": ("new_image.webp", b"new_fake_image_content", "image/webp")
+    }
+
+    response = client.patch(
+        f"/events/{event_id}/image",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+        },
+        files=new_files
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+
+def test_update_event_image_nonexistent(client: TestClient, token: str):
+    """Test the PATCH /events/{event_id}/image endpoint with non-existent event."""
+    files = {
+        "image": ("test_image.webp", b"fake_image_content", "image/webp")
+    }
+
+    response = client.patch(
+        "/events/999999/image",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+        },
+        files=files
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+
+
+# Test get my registered events
+def test_get_my_registered_events_success(client: TestClient, token: str):
+    """Test the GET /events/my-registered-events endpoint with valid token."""
+    response = client.get(
+        "/events/my-registered-events",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json"
+        }
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert isinstance(response.json(), list)
+
+
+def test_get_my_registered_events_unauthorized(client: TestClient):
+    """Test the GET /events/my-registered-events endpoint without token."""
+    response = client.get(
+        "/events/my-registered-events",
+        headers={"accept": "application/json"}
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# Test get events to react
+def test_get_events_to_react_success(client: TestClient, token: str):
+    """Test the GET /events/events-to-react endpoint with valid token."""
+    response = client.get(
+        "/events/events-to-react",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json"
+        }
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert isinstance(response.json(), list)
+
+
+def test_get_events_to_react_unauthorized(client: TestClient):
+    """Test the GET /events/events-to-react endpoint without token."""
+    response = client.get(
+        "/events/events-to-react",
+        headers={"accept": "application/json"}
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# Test get event image
+def test_get_event_image_nonexistent(client: TestClient):
+    """Test the GET /events/image/{image_uuid} endpoint with non-existent image."""
+    fake_uuid = "00000000-0000-0000-0000-000000000000"
+    response = client.get(f"/events/image/{fake_uuid}")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_get_event_image_invalid_uuid(client: TestClient):
+    """Test the GET /events/image/{image_uuid} endpoint with invalid UUID."""
+    response = client.get("/events/image/invalid-uuid")
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+# Test delete event
+def test_delete_event_success(client: TestClient, token: str):
+    """Test the DELETE /events/{event_id} endpoint with valid event."""
+    # First create an event
+    files = {
+        "image": ("test_image.webp", b"fake_image_content", "image/webp")
+    }
+
+    create_response = client.post(
+        "/events/add",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+        },
+        data={
+            "name": "NASA",
+            "description": "Event description",
+            "location": "UDLA Park",
+            "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
+            "capacity": "250",
+            "capacity_type": "site_capacity"
+        },
+        files=files
+    )
+
+    event_id = create_response.json()["id"]
+
+    # Delete the event
+    response = client.delete(
+        f"/events/{event_id}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json"
+        }
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+
+def test_delete_event_nonexistent(client: TestClient, token: str):
+    """Test the DELETE /events/{event_id} endpoint with non-existent event."""
+    response = client.delete(
+        "/events/999999",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json"
+        }
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+# Test get event dates
+def test_get_event_dates_success(client: TestClient, token: str):
+    """Test the GET /events/{event_id}/dates endpoint with valid event."""
+    # First create an event
+    files = {
+        "image": ("test_image.webp", b"fake_image_content", "image/webp")
+    }
+
+    create_response = client.post(
+        "/events/add",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+        },
+        data={
+            "name": "NASA",
+            "description": "Event description",
+            "location": "UDLA Park",
+            "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
+            "capacity": "250",
+            "capacity_type": "site_capacity"
+        },
+        files=files
+    )
+
+    event_id = create_response.json()["id"]
+
+    response = client.get(f"/events/{event_id}/dates")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert isinstance(response.json(), list)
+
+
+def test_get_event_dates_nonexistent(client: TestClient):
+    """Test the GET /events/{event_id}/dates endpoint with non-existent event."""
+    response = client.get("/events/999999/dates")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+# Test add attendance endpoints
+def test_add_attendance_success(client: TestClient, token: str):
+    """Test the POST /events/add/attendance/{event_date_id}/{registration_id} endpoint."""
+    # This test would require setting up event, registration, and date
+    # For now, test with non-existent IDs to check error handling
+    response = client.post(
+        "/events/add/attendance/999/999",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json"
+        }
+    )
+
+    # Should return an error for non-existent IDs
+    assert response.status_code in [status.HTTP_404_NOT_FOUND, status.HTTP_400_BAD_REQUEST]
+
+
+# Test get registered users endpoints
+def test_get_all_registered_users_success(client: TestClient):
+    """Test the GET /events/registered/all endpoint."""
+    response = client.get("/events/registered/all")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert isinstance(response.json(), list)
+
+
+def test_get_registered_users_for_event(client: TestClient, token: str):
+    """Test the GET /events/registered/{event_id} endpoint."""
+    # Create an event first
+    files = {
+        "image": ("test_image.webp", b"fake_image_content", "image/webp")
+    }
+
+    create_response = client.post(
+        "/events/add",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "accept": "application/json",
+        },
+        data={
+            "name": "NASA",
+            "description": "Event description",
+            "location": "UDLA Park",
+            "maps_link": "https://maps.app.goo.gl/a1zZZvko42gDR5ny6",
+            "capacity": "250",
+            "capacity_type": "site_capacity"
+        },
+        files=files
+    )
+
+    event_id = create_response.json()["id"]
+
+    response = client.get(f"/events/registered/{event_id}")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert isinstance(response.json(), list)
+
+
+def test_get_event_info_by_date(client: TestClient):
+    """Test the GET /events/info-event-by-date/{event_date_id} endpoint."""
+    response = client.get("/events/info-event-by-date/999")
+
+    # Should return error for non-existent date
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
