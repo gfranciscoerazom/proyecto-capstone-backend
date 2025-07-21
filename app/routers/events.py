@@ -4,7 +4,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import sqlalchemy
-from fastapi import (APIRouter, Body, Depends, Form, HTTPException, Path, Query,
+from fastapi import (APIRouter, BackgroundTasks, Body, Depends, Form, HTTPException, Path, Query,
                      Security, UploadFile, status)
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
@@ -16,10 +16,13 @@ from app.db.database import (Attendance, Event, EventCreate, EventDate,
                              EventPublicWithNoDeletedEventDate, EventUpdate, Registration,
                              SessionDependency, User, UserAssistantPublic, get_current_active_user)
 from app.helpers.files import safe_path_join
+from app.helpers.mail import send_event_rating_email
 from app.helpers.validations import are_unique_dates, save_image
 from app.models.Scopes import Scopes
 from app.models.Tags import Tags
 from app.models.TypeCapacity import TypeCapacity
+from app.settings.config import settings
+from fastapi.responses import JSONResponse
 
 router = APIRouter(
     prefix="/events",
@@ -134,7 +137,7 @@ async def add_event(
         session.commit()
     except sqlalchemy.exc.IntegrityError as e:
         image_path: pl.Path = pl.Path(
-            f"./data/events_imgs/{event_image_uuid}.png"
+            f"{settings.DATA_FOLDER}/events_imgs/{event_image_uuid}.png"
         )
         if image_path.exists():
             image_path.unlink()
@@ -220,7 +223,7 @@ async def update_event_image(
     # Eliminar la imagen anterior si existe
     if db_event.image_uuid:
         image_path: pl.Path = pl.Path(
-            f"./data/events_imgs/{db_event.image_uuid}.png"
+            f"{settings.DATA_FOLDER}/events_imgs/{db_event.image_uuid}.png"
         )
         if image_path.exists():
             image_path.unlink()
@@ -343,14 +346,17 @@ async def get_events_to_react(
     if not my_registered_events:
         return []
 
-    event_ids = [
-        registration.event_id for registration in my_registered_events]
-    events = session.exec(
-        select(Event)
-        .where(Event.id.in_(event_ids))
+    attendances = session.exec(
+        select(Attendance)
+        .where(Attendance.registration_id.in_(
+            [registration.id for registration in my_registered_events])
+        )
     ).all()
 
-    return events
+    if not attendances:
+        return []
+
+    return [attendance.event_date.event for attendance in attendances]
 
 
 @router.get(
@@ -435,7 +441,7 @@ def get_event_image(
         HTTPException: If the image is not found in the images database.
     """
     normalized_image_path: pl.Path = safe_path_join(
-        pl.Path("./data/events_imgs"),
+        pl.Path(f"{settings.DATA_FOLDER}/events_imgs"),
         f"{image_uuid}.png"
     )
 
@@ -653,6 +659,7 @@ async def add_attendance(
         )
     ],
     session: SessionDependency,
+    background_tasks: BackgroundTasks,
 ) -> Attendance:
     """
     Endpoint to add an attendance to an event.
@@ -712,6 +719,14 @@ async def add_attendance(
         ) from e
     session.refresh(new_attendance)
 
+    user = session.get(User, registration.companion_id)
+
+    if user:
+        background_tasks.add_task(
+            send_event_rating_email,
+            user=user,
+        )
+
     return new_attendance
 
 
@@ -744,6 +759,7 @@ async def add_attendance_by_companion(
         )
     ],
     session: SessionDependency,
+    background_tasks: BackgroundTasks,
 ):
     """
     Endpoint to add an attendance to an event.
@@ -795,6 +811,14 @@ async def add_attendance_by_companion(
             detail=str(e)
         ) from e
     session.refresh(attendance)
+
+    user = session.get(User, companion_id)
+
+    if user:
+        background_tasks.add_task(
+            send_event_rating_email,
+            user=user,
+        )
 
     return attendance
 
@@ -1004,9 +1028,9 @@ async def get_all_attendance_users(
 
 @router.get(
     "/attendances-users/{event_date_id}",
-    response_model=list[UserAssistantPublic],
+    response_model=list[dict],  # Cambiado a lista de diccionarios
     summary="Get all users who attended an event date",
-    response_description="List of users who attended the event date",
+    response_description="List of users and their attendance info for the event date",
 )
 async def get_attendance_users(
     event_date_id: Annotated[
@@ -1021,7 +1045,7 @@ async def get_attendance_users(
     """
     Endpoint to get all users who attended an event date.
 
-    This endpoint retrieves a list of users who attended a specific event date by its ID.
+    This endpoint retrieves a list of users and their attendance info for a specific event date by its ID.
 
     \f
 
@@ -1029,8 +1053,8 @@ async def get_attendance_users(
     :type event_date_id: PositiveInt
     :param session: The database session dependency.
     :type session: SessionDependency
-    :return: A list of users who attended the event date.
-    :rtype: list[UserAssistantPublic]
+    :return: A list of dicts with user and attendance info.
+    :rtype: list[dict]
     """
     attendances = session.exec(
         select(Attendance)
@@ -1040,12 +1064,91 @@ async def get_attendance_users(
     if not attendances:
         return []
 
-    user_ids = [
-        attendance.registration.companion_id for attendance in attendances]
-    users = session.exec(
-        select(User)
-        .where(User.id.in_(user_ids))
-    ).all()
+    result = []
+    for attendance in attendances:
+        user = session.get(User, attendance.registration.companion_id)
+        result.append({
+            "user": UserAssistantPublic.model_validate(user),
+            "attendance": attendance
+        })
 
-    return [UserAssistantPublic.model_validate(user) for user in users]
+    return result
+
+
+@router.get(
+    "/info-event-by-date/{event_date_id}",
+    response_model=EventPublicWithEventDate,
+    summary="Get event info by event date ID",
+    response_description="Event info with event date",
+)
+async def get_event_info_by_date(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event Date ID",
+            description="The ID of the event date to get event info for.",
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Endpoint to get event info by event date ID.
+
+    This endpoint retrieves the event information associated with a specific event date by its ID.
+
+    \f
+
+    :param event_date_id: The ID of the event date to get event info for.
+    :type event_date_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The event information associated with the specified event date.
+    :rtype: EventPublicWithEventDate
+    """
+    if not (event_date := session.get(EventDate, event_date_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event date not found",
+        )
+
+    return event_date.event
+
+
+@router.get(
+    "/info-event-date/{event_date_id}",
+    response_model=EventDate,
+    summary="Get event date info by ID",
+    response_description="Event date info",
+)
+async def get_event_date_info(
+    event_date_id: Annotated[
+        PositiveInt,
+        Path(
+            title="Event Date ID",
+            description="The ID of the event date to get info for.",
+        )
+    ],
+    session: SessionDependency,
+):
+    """
+    Endpoint to get event date info by ID.
+
+    This endpoint retrieves the information of a specific event date by its ID.
+
+    \f
+
+    :param event_date_id: The ID of the event date to get info for.
+    :type event_date_id: PositiveInt
+    :param session: The database session dependency.
+    :type session: SessionDependency
+    :return: The information of the specified event date.
+    :rtype: EventDate
+    """
+    if not (event_date := session.get(EventDate, event_date_id)):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event date not found",
+        )
+
+    return event_date
 # endregion

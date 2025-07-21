@@ -104,6 +104,11 @@ class Settings(BaseSettings):
         description="Threshold for face recognition",
         examples=[0.5, 0.6, 0.7],
     )
+    DATA_FOLDER: Final[str] = Field(
+        title="Data Folder",
+        description="Path to the folder containing data files",
+        examples=["/path/to/data/folder"],
+    )
 
     model_config = SettingsConfigDict(
         env_file=Path.cwd() / ".env",

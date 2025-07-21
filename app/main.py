@@ -63,13 +63,17 @@ async def lifespan(app: FastAPI):
     create_db_and_tables()
 
     # Imagen inicial para evitar errores de reconocimiento facial.
-    if not pl.Path("./data/people_imgs/test.jpg").exists():
+    if not pl.Path(f"{settings.DATA_FOLDER}/people_imgs/test.jpg").exists():
+        # Verificar que las carpetas padres estén creadas
+        pl.Path(
+            f"{settings.DATA_FOLDER}/people_imgs").mkdir(parents=True, exist_ok=True)
         img = requests.get("https://www.thispersondoesnotexist.com")
-        img_path = pl.Path("./data/people_imgs/").resolve() / "test.jpg"
+        img_path = pl.Path(
+            f"{settings.DATA_FOLDER}/people_imgs/").resolve() / "test.jpg"
         img_path.write_bytes(img.content)
 
     # Si hay más de tres elementos en la carpeta people_imgs, eliminar test.jpg
-    people_imgs_path = pl.Path("./data/people_imgs").resolve()
+    people_imgs_path = pl.Path(f"{settings.DATA_FOLDER}/people_imgs").resolve()
     if len(list(people_imgs_path.iterdir())) > 3:
         test_img_path = people_imgs_path / "test.jpg"
         if test_img_path.exists():
@@ -93,26 +97,10 @@ async def lifespan(app: FastAPI):
             session.add(admin_user)
             session.commit()
 
-            if settings.ENVIRONMENT == "development":
-                # Populate the database with mock data
-                with open("./data/mock/tables_urls.json", "r") as file:
-                    tables_urls = json.load(file)
-
-                for table, url in tables_urls:
-                    response = requests.get(url)
-                    df = pd.read_csv(StringIO(response.text))  # type: ignore
-                    if table == "staffeventlink":
-                        df.drop_duplicates(inplace=True)
-                    elif table == "attendance":
-                        df.drop_duplicates(
-                            subset=["event_date_id", "registration_id"], inplace=True)
-                    df.to_sql(table, con=engine,
-                              if_exists="append", index=False)
-
     yield
 
     # Code to run after the server stops
-    temp_imgs_path = pl.Path("./data/temp_imgs").resolve()
+    temp_imgs_path = pl.Path(f"{settings.DATA_FOLDER}/temp_imgs").resolve()
     if temp_imgs_path.exists() and temp_imgs_path.is_dir():
         for item in temp_imgs_path.iterdir():
             if item.name == ".gitkeep":
@@ -364,7 +352,8 @@ async def add_process_time_header(
 app.add_middleware(
     CORSMiddleware,
     # Cambia el puerto si es necesario
-    allow_origins=["http://127.0.0.1:8001"],
+    allow_origins=["http://127.0.0.1:8001", "https://proyecto-capstone-frontend.onrender.com",
+                   "https://proyecto-capstone-backend.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
