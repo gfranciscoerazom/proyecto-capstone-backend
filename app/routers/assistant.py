@@ -220,10 +220,7 @@ async def get_assistants_by_image(
                 )
             ).all()
         )
-        print("====================================================================================================")
-        print("Similar users found:", similar_users)
-        print("UUIDs list:", uuids_list)
-        print("====================================================================================================")
+
         if not similar_users and len(uuids_list) > 0:
             assisted_people: list[User] = list(
                 session.exec(
