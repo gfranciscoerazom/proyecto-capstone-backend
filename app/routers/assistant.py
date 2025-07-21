@@ -220,6 +220,37 @@ async def get_assistants_by_image(
                 )
             ).all()
         )
+        print("====================================================================================================")
+        print("Similar users found:", similar_users)
+        print("UUIDs list:", uuids_list)
+        print("====================================================================================================")
+        if not similar_users and len(uuids_list) > 0:
+            assisted_people: list[User] = list(
+                session.exec(
+                    select(User).
+                    join(Registration, Registration.companion_id == User.id).  # type: ignore
+                    join(Event, Registration.event_id == Event.id).  # type: ignore
+                    join(EventDate, Event.id == EventDate.event_id).  # type: ignore
+                    join(Assistant, Assistant.user_id == User.id).  # type: ignore
+                    join(Attendance, and_(
+                        Attendance.event_date_id == EventDate.id,
+                        Attendance.registration_id == Registration.id
+                    ), isouter=True).
+                    where(
+                        Assistant.image_uuid.in_(uuids_list),  # type: ignore
+                        Event.id == event_id,
+                        EventDate.id == event_date_id,
+                        Attendance.arrival_time != None
+                    )
+                ).all()
+            )
+
+            if assisted_people:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No similar people found in the main database, but some people have already assisted to the event",
+                )
+
         return similar_users
 
     similar_users = list(
