@@ -80,6 +80,13 @@ class PersonImg:
             temp_file.write(self.img.file.read())
             temp_file_path = temp_file.name
 
+        # Check if the people_imgs directory exists and has images
+        people_imgs_path = Path(f"{settings.DATA_FOLDER}/people_imgs")
+        if not people_imgs_path.exists() or not any(people_imgs_path.iterdir()):
+            # Clean up the temporary file
+            Path(temp_file_path).unlink()
+            return []
+
         # Find similar people in the image database
         try:
             similar_people = DeepFace.find(  # type: ignore
@@ -90,6 +97,9 @@ class PersonImg:
                 detector_backend="yunet",
                 enforce_detection=False,
             )[0]["identity"].to_list()
+        except Exception:
+            # If DeepFace fails (e.g., no faces found, empty database), return empty list
+            similar_people = []
         finally:
             # Clean up the temporary file
             Path(temp_file_path).unlink()

@@ -64,6 +64,11 @@ def send_event_registration_email(
     dates: list[EventDate]
 ) -> None:
     subject = f"Hola {user.first_name} {user.last_name}, estás oficialmente registrado/a!"
+    
+    # Handle case where no dates are provided
+    if not dates:
+        return
+    
     event_date = sorted(dates, key=lambda d: d.day_date)[0]
     _send_email(
         user,
@@ -99,19 +104,6 @@ def send_event_reminder_email(
             "event_location": event.location,
         }
     )
-
-
-# def send_registration_canceled_email(
-#     user: User,
-#     event: Event
-# ) -> None:
-#     subject = f"Cancelaste el evento '{event.name}' en la UDLA"
-#     _send_email(
-#         user,
-#         subject,
-#         "registration_canceled.html",
-#         {"first_name": user.first_name}
-#     )
 
 
 def send_registration_canceled_email(
